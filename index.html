@@ -87,6 +87,13 @@
   </div>
 
   <div class="card">
+    <h2 id="viewtitle">南の空の見え方</h2>
+    <canvas id="view" width="720" height="260" style="width:100%;display:block;border-radius:8px"></canvas>
+    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段分離</span></div>
+    <div class="note" id="viewnote" style="margin-top:4px"></div>
+  </div>
+
+  <div class="card">
     <h2>カウントダウン</h2>
     <div class="mid" id="cdlabel">打上げまで</div>
     <div class="big" id="cd">--</div>
@@ -323,6 +330,7 @@ function updateMap() {
 
 // ===== 天空図 =====
 function drawSky(curT) {
+  drawView(curT);
   const c = $('sky'), g = c.getContext('2d'), W = c.width, cx = W/2, cy = W/2, R = W/2 - 40;
   g.clearRect(0, 0, W, W);
   g.fillStyle = '#0e1428'; g.beginPath(); g.arc(cx, cy, R, 0, 2*Math.PI); g.fill();
@@ -358,6 +366,110 @@ function drawSky(curT) {
     if (p && p.el > 0) { const [x, y] = xy(p); g.fillStyle = '#ff3d3d'; g.strokeStyle = '#fff'; g.lineWidth = 3;
       g.beginPath(); g.arc(x, y, 11, 0, 2*Math.PI); g.fill(); g.stroke(); }
   }
+}
+
+// ===== 地平線の見え方（パノラマ）=====
+const DIR8 = ['北','北東','東','南東','南','南西','西','北西'];
+// 見えている区間の方位範囲に合わせて表示範囲を決める
+function viewRange() {
+  const v = track.filter(p => p.el > 0);
+  if (!v.length) return { center: Math.round(track[SEP_T].az / 10) * 10, span: 140, elMax: 30 };
+  const ref = v[0].az; let lo = 0, hi = 0, elTop = 0;
+  v.forEach(p => { const d = ((p.az - ref + 540) % 360) - 180; lo = Math.min(lo, d); hi = Math.max(hi, d); elTop = Math.max(elTop, p.el); });
+  const center = (Math.round((ref + (lo + hi) / 2) / 10) * 10 + 360) % 360;
+  return { center, span: Math.min(220, Math.max(120, hi - lo + 30)), elMax: Math.max(30, Math.ceil((elTop + 12) / 10) * 10) };
+}
+function drawView(curT) {
+  const c = $('view'), g = c.getContext('2d'), W = c.width;
+  const { center, span: SPAN, elMax } = viewRange(), K = W / SPAN; // 1° あたりのピクセル（縦横同じ縮尺）
+  const H = Math.round(elMax * K) + 40;
+  if (c.height !== H) c.height = H;
+  const y0 = H - 40, ELMAX = elMax;                    // 地平線の位置と上端の仰角
+  const xAz = az => { let d = ((az - center + 540) % 360) - 180; return W/2 + d * K; };
+  const yEl = el => y0 - el * K;
+  // 空（観測地の太陽高度で色を変える）
+  const sa = sunAltAt(obs, new Date(launchDate().getTime() + SEP_T*1000));
+  const sky = g.createLinearGradient(0, 0, 0, y0);
+  if (sa < -12) { sky.addColorStop(0, '#04061a'); sky.addColorStop(1, '#101a3d'); }
+  else if (sa < -6) { sky.addColorStop(0, '#0a1030'); sky.addColorStop(1, '#2d3d70'); }
+  else if (sa < 0) { sky.addColorStop(0, '#1d2f66'); sky.addColorStop(1, '#c9805a'); }
+  else { sky.addColorStop(0, '#3d6fb5'); sky.addColorStop(1, '#a9c8e8'); }
+  g.fillStyle = sky; g.fillRect(0, 0, W, y0);
+  // 太陽の方向が地平線下でも、東の地平線を薄く明るくする（薄明）
+  if (sa > -18 && sa < 0) {
+    const s = sunEcef(new Date(launchDate().getTime() + SEP_T*1000));
+    const sp = Math.sin(obs.lat*D2R), cp = Math.cos(obs.lat*D2R), sl = Math.sin(obs.lon*D2R), cl = Math.cos(obs.lon*D2R);
+    const e = -sl*s[0] + cl*s[1], n = -sp*cl*s[0] - sp*sl*s[1] + cp*s[2];
+    const sx = xAz((Math.atan2(e, n)*R2D + 360) % 360), a = 0.45 * (1 + sa/18);
+    const glow = g.createRadialGradient(sx, y0, 0, sx, y0, 260);
+    glow.addColorStop(0, `rgba(255,150,90,${a})`); glow.addColorStop(1, 'rgba(255,150,90,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, W, y0);
+  }
+  // 仰角の目盛り
+  g.strokeStyle = 'rgba(147,160,196,.25)'; g.lineWidth = 1; g.fillStyle = 'rgba(147,160,196,.8)';
+  g.font = '22px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  for (let el = 10; el < ELMAX; el += 10) { const y = yEl(el); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); g.fillText(`${el}°`, 4, y - 12); }
+  // 地面
+  g.fillStyle = '#0c120e'; g.fillRect(0, y0, W, H - y0);
+  g.strokeStyle = '#3b5b45'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, y0); g.lineTo(W, y0); g.stroke();
+  // 方角
+  g.textAlign = 'center'; g.font = 'bold 26px sans-serif';
+  for (let i = 0; i < 8; i++) {
+    const x = xAz(i * 45); if (x < 20 || x > W - 20) continue;
+    g.fillStyle = '#c8d2ee'; g.fillText(DIR8[i], x, y0 + 21);
+    g.strokeStyle = 'rgba(147,160,196,.18)'; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, y0); g.stroke();
+  }
+  // 経路
+  g.lineWidth = 6; g.lineCap = 'round';
+  for (let i = 1; i < track.length; i++) {
+    const a = track[i-1], b = track[i];
+    if (a.el < 0 && b.el < 0) continue;
+    const xa = xAz(a.az), xb = xAz(b.az); if (Math.abs(xa - xb) > W/2) continue;
+    g.strokeStyle = b.lit ? '#ffd25a' : '#8e9ac0';
+    g.beginPath(); g.moveTo(xa, yEl(Math.max(a.el, 0))); g.lineTo(xb, yEl(Math.max(b.el, 0))); g.stroke();
+  }
+  // イベント（ラベルが端で切れないよう寄せる）
+  const clampX = (txt, x) => { const w = g.measureText(txt).width / 2 + 4; return Math.min(Math.max(x, w), W - w); };
+  g.font = '22px sans-serif';
+  EVENTS.forEach((e, k) => {
+    const p = track[e.t]; if (!p || p.el < 0) return;
+    const x = xAz(p.az), y = yEl(p.el); if (x < 0 || x > W) return;
+    if (e.key) {
+      g.fillStyle = '#ff5a5a'; g.beginPath(); g.moveTo(x, y-13); g.lineTo(x+13, y); g.lineTo(x, y+13); g.lineTo(x-13, y); g.closePath(); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center';
+      const st = `第1段分離 ${hms(jst(new Date(launchDate().getTime() + SEP_T*1000)))}`; g.fillText(st, clampX(st, x), y - 30);
+      g.font = '22px sans-serif';
+    } else if (e.t !== 292 && e.t !== 312) {
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 5, 0, 2*Math.PI); g.fill();
+      g.fillStyle = '#c8d2ee'; g.textAlign = 'center';
+      const lbl = { 116: 'SRB分離', 197: 'フェアリング分離', 640: '第2段停止' }[e.t];
+      if (lbl) g.fillText(lbl, clampX(lbl, x), y - 22);
+    }
+  });
+  // 見え始め
+  const vw = visibleWindow();
+  if (vw && vw.from > 0) {
+    const p = track[vw.from], x = xAz(p.az);
+    if (x > 0 && x < W) { g.fillStyle = '#5fd68a'; g.beginPath(); g.moveTo(x, y0 - 2); g.lineTo(x - 9, y0 + 12); g.lineTo(x + 9, y0 + 12); g.closePath(); g.fill();
+      g.font = '20px sans-serif'; g.textAlign = x > W/2 ? 'right' : 'left'; g.fillText(`昇る X${fmtT(vw.from)}`, x + (x > W/2 ? -14 : 14), y0 + 26); }
+  }
+  // 現在位置
+  if (curT != null && curT >= 0 && curT <= T_END) {
+    const p = track[Math.round(curT)];
+    if (p && p.el > 0) { const x = xAz(p.az), y = yEl(p.el); g.fillStyle = '#ff3d3d'; g.strokeStyle = '#fff'; g.lineWidth = 3;
+      g.beginPath(); g.arc(x, y, 10, 0, 2*Math.PI); g.fill(); g.stroke(); }
+  }
+  // こぶしの目安（腕を伸ばした握りこぶし1つ ≈ 10°）
+  let top = track[SEP_T]; track.forEach(p => { if (p.el > top.el) top = p; });
+  let fx = xAz(top.az) + 50; if (fx > W - 30) fx = xAz(top.az) - 50;
+  g.strokeStyle = '#c8d2ee'; g.lineWidth = 2; g.beginPath(); g.moveTo(fx, y0); g.lineTo(fx, yEl(10)); g.moveTo(fx-6, yEl(10)); g.lineTo(fx+6, yEl(10)); g.stroke();
+  g.fillStyle = '#c8d2ee'; g.textAlign = 'right'; g.font = '20px sans-serif'; g.fillText('こぶし1つ', fx - 10, yEl(5));
+  const dirTitle = DIR8[Math.round(center / 45) % 8];
+  $('viewtitle').textContent = `${obs.name}から見た${dirTitle}の空`;
+  const s = track[SEP_T];
+  $('viewnote').textContent = s.el > 0
+    ? `第1段分離は${dirName(s.az)}の空、地平線から仰角${s.el.toFixed(0)}°（腕を伸ばした握りこぶし約${(s.el/10).toFixed(1)}個分）の高さ。横幅は方角${Math.round(SPAN)}°分（縦横同じ縮尺）。`
+    : '第1段分離の位置はこの地点からは地平線の下です。';
 }
 
 // ===== 結果表示 =====
