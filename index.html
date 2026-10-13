@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0b1020">
+  <title>MMX-H3 第1段分離ウォッチ</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    :root { --bg:#0b1020; --card:#151c33; --line:#2a3458; --fg:#e8ecf8; --mut:#93a0c4; --acc:#ffb347; --ok:#5fd68a; --ng:#ff6b6b; --sun:#ffd25a; --sh:#7f8bb0; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; font-size:15px;
+           padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 16px); }
+    h1 { font-size:19px; margin:12px 0 2px; }
+    .sub { color:var(--mut); font-size:12px; margin-bottom:10px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:10px 0; }
+    .card h2 { font-size:14px; margin:0 0 8px; color:var(--acc); }
+    label { font-size:12px; color:var(--mut); display:block; margin-bottom:3px; }
+    select, input { width:100%; font-size:16px; padding:8px; border-radius:8px; border:1px solid var(--line); background:#0e1428; color:var(--fg); }
+    .row { display:flex; gap:8px; align-items:flex-end; }
+    .row > * { flex:1; min-width:0; }
+    button { font-size:15px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#22305a; color:var(--fg); }
+    button.pri { background:#e07b1f; border-color:#e07b1f; font-weight:bold; }
+    button:active { opacity:.7; }
+    .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .btns button { flex:1; }
+    .big { font-size:30px; font-weight:bold; font-variant-numeric:tabular-nums; text-align:center; }
+    .mid { text-align:center; color:var(--mut); font-size:13px; }
+    .sep { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center; margin-top:6px; }
+    .sep div { background:#0e1428; border-radius:8px; padding:6px 2px; }
+    .sep b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+    .sep span { font-size:11px; color:var(--mut); }
+    .verdict { margin-top:8px; padding:8px; border-radius:8px; font-size:14px; line-height:1.5; background:#0e1428; }
+    #map { height:230px; border-radius:10px; }
+    #sky { width:100%; max-width:360px; display:block; margin:0 auto; aspect-ratio:1; }
+    table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+    th, td { padding:5px 3px; border-bottom:1px solid var(--line); text-align:right; }
+    th:first-child, td:first-child { text-align:left; }
+    td:not(:first-child) { white-space:nowrap; }
+    th { color:var(--mut); font-weight:normal; font-size:11px; }
+    tr.hl td { color:var(--acc); font-weight:bold; }
+    tr.click { cursor:pointer; }
+    .lg { font-size:11px; color:var(--mut); text-align:center; margin-top:4px; }
+    .lg i { display:inline-block; width:14px; height:3px; vertical-align:middle; margin:0 3px 0 8px; }
+    .note { font-size:11.5px; color:var(--mut); line-height:1.6; }
+    .tag { display:inline-block; font-size:11px; padding:1px 6px; border-radius:6px; margin-left:4px; }
+    .t-ok { background:#1d4d33; color:var(--ok); } .t-ng { background:#4d1d24; color:var(--ng); } .t-sun { background:#4d3f12; color:var(--sun); }
+    .leaflet-container { font-family:inherit; background:#222; }
+    .leaflet-control-attribution { font-size:9px; }
+    .rank-wrap { max-height:320px; overflow-y:auto; }
+  </style>
+</head>
+<body>
+  <h1>🚀 MMX-H3 第1段分離ウォッチ</h1>
+  <div class="sub">H3ロケット（MMX）第1段・第2段分離（X+4分59秒）が日本各地からいつ・どこに見えるかのシミュレーション</div>
+
+  <div class="card">
+    <h2>打上げ日時（日本標準時）</h2>
+    <div class="row">
+      <div><label>日付</label><input type="date" id="ldate" value="2026-10-20"></div>
+      <div><label>時刻</label><input type="time" id="ltime" step="1" value="04:41:03"></div>
+    </div>
+    <div class="note" style="margin-top:4px">計画書の予定は 2026/10/20 4:41:03。予備期間（10/21〜11/7）は日ごとに打上げ時刻が変わるので、延期時は発表された時刻に直してください。</div>
+  </div>
+
+  <div class="card">
+    <h2>観測地点</h2>
+    <div class="row">
+      <div style="flex:2"><label>地点</label><select id="place"></select></div>
+      <div style="flex:1"><button id="gps" style="width:100%">📍 現在地</button></div>
+    </div>
+    <div class="mid" id="obsinfo" style="margin-top:4px"></div>
+  </div>
+
+  <div class="card">
+    <h2>第1段分離の見え方</h2>
+    <div class="mid">分離時刻</div>
+    <div class="big" id="septime">--:--:--</div>
+    <div class="sep">
+      <div><b id="sepaz">--</b><span>方角</span></div>
+      <div><b id="sepel">--</b><span>仰角</span></div>
+      <div><b id="sepdist">--</b><span>距離</span></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="card">
+    <h2>カウントダウン</h2>
+    <div class="mid" id="cdlabel">打上げまで</div>
+    <div class="big" id="cd">--</div>
+    <div class="mid" id="nowpos"></div>
+    <div class="btns">
+      <button class="pri" id="live">🔊 本番の読み上げ開始</button>
+    </div>
+    <div class="btns">
+      <button id="sim1">▶ 再生（実時間）</button>
+      <button id="sim10">⏩ 再生（10倍速）</button>
+      <button id="stop">■ 停止</button>
+    </div>
+    <div class="note" style="margin-top:6px">「再生」は打上げ1分前から分離後まで（X−60秒〜X+11分）を、あなたの地点から見た空でシミュレーションします（音声つき）。本番の読み上げは打上げ時刻に合わせて自動で進みます。画面は点けたままにしてください。</div>
+  </div>
+
+  <div class="card">
+    <h2>空のどこに見えるか（天空図）</h2>
+    <canvas id="sky" width="720" height="720"></canvas>
+    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段分離</span></div>
+  </div>
+
+  <div class="card">
+    <h2>飛行経路（推定）</h2>
+    <div id="map"></div>
+  </div>
+
+  <div class="card">
+    <h2>イベントごとの見え方</h2>
+    <table id="evt"></table>
+  </div>
+
+  <div class="card">
+    <h2>各地から見た第1段分離（仰角の高い順）</h2>
+    <div class="note" style="margin-bottom:4px">行をタップするとその地点に切り替えます。</div>
+    <div class="rank-wrap"><table id="rank"></table></div>
+  </div>
+
+  <div class="card note">
+    <b>計算方法と注意</b><br>
+    ・JAXA「2026年度 ロケット打上げ計画書 火星衛星探査機(MMX)／H3ロケット」（2026年8月）の表2（各イベントの経過時間・高度）と図3（飛行経路）から、種子島 吉信射点から真東（方位90°）に打ち上げ、図3の第1段燃焼停止・第2段第1回燃焼停止の位置を通って徐々に南へ曲がる経路を推定しています。<br>
+    ・水平距離（ダウンレンジ）は表2の高度・慣性速度から求めた値と図3の位置を平均したもので、第1段分離（X+299秒・高度214 km）は 北緯約30.1°・東経約138.1°（遠州灘〜伊豆諸島の南方沖）と推定。位置の誤差は数十 km 程度、方角・仰角は数度ずれる可能性があります。<br>
+    ・「日が当たる」は地球を球として、機体位置が地球の影の外にあるかを判定したものです。夜明け前の空で日が当たる高度にある排気ガスは明るく広がって見えることがありますが、天候・大気の状態で大きく変わります。<br>
+    ・大気差（屈折）や地形の影響は考慮していません。仰角が低い場合は山や建物に隠れます。
+  </div>
+
+<script>
+'use strict';
+// ===== 飛行計画（計画書 表2）=====
+const EVENTS = [
+  { t: 0,   name: 'リフトオフ',            say: 'リフトオフ' },
+  { t: 116, name: 'SRB-3 第1ペア分離',     say: '固体ロケットブースタ分離' },
+  { t: 197, name: '衛星フェアリング分離',   say: '衛星フェアリング分離' },
+  { t: 292, name: '第1段燃焼停止 MECO',    say: '第1段エンジン燃焼停止' },
+  { t: 299, name: '第1段・第2段分離',      say: '第1段分離', key: true },
+  { t: 312, name: '第2段第1回燃焼開始',     say: '第2段エンジン点火' },
+  { t: 640, name: '第2段第1回燃焼停止',     say: '第2段エンジン燃焼停止' },
+];
+const SEP_T = 299;
+const T_END = 640;
+// 経過時間 [s] と高度 [km]（表2＋上昇初期の推定点）
+const HT = [0, 30, 60, 90, 116, 118, 197, 292, 299, 312, 640];
+const HH = [0, 3, 14, 33, 59, 61, 131, 208, 214, 224, 329];
+// ダウンレンジ [km]（表2から積分した値と図3の位置の平均）
+const ST = [0, 60, 116, 197, 292, 299, 312, 640];
+const SS = [0, 20, 105, 240, 648, 687, 758, 2768];
+const PAD = { lat: 30.4010, lon: 130.9770 }; // 吉信射点
+const RE = 6371.0;
+
+function pchip(xs, ys) {
+  const n = xs.length, h = [], d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) { h[i] = xs[i+1] - xs[i]; d[i] = (ys[i+1] - ys[i]) / h[i]; }
+  m[0] = d[0]; m[n-1] = d[n-2];
+  for (let i = 1; i < n - 1; i++) {
+    if (d[i-1] * d[i] <= 0) m[i] = 0;
+    else { const w1 = 2*h[i] + h[i-1], w2 = h[i] + 2*h[i-1]; m[i] = (w1 + w2) / (w1 / d[i-1] + w2 / d[i]); }
+  }
+  return x => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n-1]) return ys[n-1] + m[n-1] * (x - xs[n-1]);
+    let i = 0; while (x > xs[i+1]) i++;
+    const t = (x - xs[i]) / h[i], t2 = t*t, t3 = t2*t;
+    return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i] + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+  };
+}
+const altAt = pchip(HT, HH), drAt = pchip(ST, SS);
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+
+// 地表軌跡: 図3の位置（射点・MECO 東経137.3°・SECO1 北緯26.1°東経158.8°）に合わせた曲線
+// 緯度 = 射点緯度 − K·(経度差)²（方位90°で打ち上げるので、はじめは真東に進み徐々に南へ曲がる）
+const TRACK_K = (PAD.lat - 26.1) / Math.pow(158.8 - PAD.lon, 2);
+const PATH = (() => {
+  const pts = []; let s = 0, prev = null;
+  for (let dx = 0; dx <= 32; dx += 0.02) {
+    const q = { lat: PAD.lat - TRACK_K * dx * dx, lon: PAD.lon + dx };
+    if (prev) {
+      const p1 = prev.lat * D2R, p2 = q.lat * D2R, dl = (q.lon - prev.lon) * D2R;
+      s += RE * Math.acos(Math.min(1, Math.sin(p1)*Math.sin(p2) + Math.cos(p1)*Math.cos(p2)*Math.cos(dl)));
+    }
+    pts.push({ ...q, s }); prev = q;
+  }
+  return pts;
+})();
+function groundAt(distKm) {
+  let i = 1; while (i < PATH.length - 1 && PATH[i].s < distKm) i++;
+  const a = PATH[i-1], b = PATH[i], f = (distKm - a.s) / (b.s - a.s);
+  return { lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f };
+}
+function rocketAt(t) {
+  const p = groundAt(drAt(t));
+  return { lat: p.lat, lon: p.lon, alt: altAt(t) };
+}
+// WGS84 測地座標 → ECEF [km]
+function ecef(lat, lon, altKm) {
+  const a = 6378.137, f = 1/298.257223563, e2 = f*(2-f);
+  const sp = Math.sin(lat*D2R), cp = Math.cos(lat*D2R), sl = Math.sin(lon*D2R), cl = Math.cos(lon*D2R);
+  const N = a / Math.sqrt(1 - e2*sp*sp);
+  return [(N+altKm)*cp*cl, (N+altKm)*cp*sl, (N*(1-e2)+altKm)*sp];
+}
+function lookAngle(obs, tgt) {
+  const o = ecef(obs.lat, obs.lon, obs.alt || 0), r = ecef(tgt.lat, tgt.lon, tgt.alt);
+  const dx = r[0]-o[0], dy = r[1]-o[1], dz = r[2]-o[2];
+  const sp = Math.sin(obs.lat*D2R), cp = Math.cos(obs.lat*D2R), sl = Math.sin(obs.lon*D2R), cl = Math.cos(obs.lon*D2R);
+  const e = -sl*dx + cl*dy, n = -sp*cl*dx - sp*sl*dy + cp*dz, u = cp*cl*dx + cp*sl*dy + sp*dz;
+  const rng = Math.hypot(e, n, u);
+  let az = Math.atan2(e, n) * R2D; if (az < 0) az += 360;
+  return { az, el: Math.asin(u / rng) * R2D, rng };
+}
+// 太陽方向（ECEF 単位ベクトル、低精度式）
+function sunEcef(date) {
+  const n = date.getTime() / 86400000 - 10957.5; // J2000.0 からの日数
+  const L = (280.460 + 0.9856474*n) * D2R, g = (357.528 + 0.9856003*n) * D2R;
+  const lam = L + (1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * D2R, eps = (23.439 - 4e-7*n) * D2R;
+  const ra = Math.atan2(Math.cos(eps)*Math.sin(lam), Math.cos(lam)), dec = Math.asin(Math.sin(eps)*Math.sin(lam));
+  const gmst = ((280.46061837 + 360.98564736629*n) % 360) * D2R;
+  const lon = ra - gmst;
+  return [Math.cos(dec)*Math.cos(lon), Math.cos(dec)*Math.sin(lon), Math.sin(dec)];
+}
+function sunAltAt(obs, date) {
+  const s = sunEcef(date), sp = Math.sin(obs.lat*D2R), cp = Math.cos(obs.lat*D2R), sl = Math.sin(obs.lon*D2R), cl = Math.cos(obs.lon*D2R);
+  return Math.asin(cp*cl*s[0] + cp*sl*s[1] + sp*s[2]) * R2D;
+}
+function sunlit(p, date) {
+  const r = ecef(p.lat, p.lon, p.alt), s = sunEcef(date);
+  const dot = r[0]*s[0] + r[1]*s[1] + r[2]*s[2];
+  if (dot > 0) return true;
+  const perp = Math.sqrt(Math.max(0, r[0]*r[0] + r[1]*r[1] + r[2]*r[2] - dot*dot));
+  return perp > RE + 10; // 下層大気で遮られる分として 10 km を加える
+}
+
+// ===== 観測地点 =====
+const PLACES = [
+  ['北海道（札幌）',43.064,141.347],['青森',40.824,140.740],['岩手（盛岡）',39.704,141.153],['宮城（仙台）',38.269,140.872],
+  ['秋田',39.719,140.102],['山形',38.240,140.364],['福島',37.750,140.468],['茨城（水戸）',36.342,140.447],
+  ['栃木（宇都宮）',36.566,139.884],['群馬（前橋）',36.391,139.061],['埼玉（さいたま）',35.857,139.649],['千葉',35.605,140.123],
+  ['東京（新宿）',35.690,139.692],['神奈川（横浜）',35.448,139.643],['新潟',37.902,139.023],['富山',36.695,137.211],
+  ['石川（金沢）',36.594,136.626],['福井',36.065,136.222],['山梨（甲府）',35.664,138.568],['長野',36.651,138.181],
+  ['岐阜',35.391,136.722],['静岡',34.977,138.383],['愛知（名古屋）',35.180,136.907],['三重（津）',34.730,136.509],
+  ['滋賀（大津）',35.004,135.868],['京都',35.021,135.756],['大阪',34.686,135.520],['兵庫（神戸）',34.691,135.183],
+  ['奈良',34.685,135.833],['和歌山',34.226,135.168],['鳥取',35.504,134.238],['島根（松江）',35.472,133.051],
+  ['岡山',34.662,133.935],['広島',34.397,132.460],['山口',34.186,131.471],['徳島',34.066,134.559],
+  ['香川（高松）',34.340,134.043],['愛媛（松山）',33.842,132.766],['高知',33.560,133.531],['福岡',33.607,130.418],
+  ['佐賀',33.249,130.299],['長崎',32.745,129.874],['熊本',32.790,130.742],['大分',33.238,131.613],
+  ['宮崎',31.911,131.424],['鹿児島',31.560,130.558],['沖縄（那覇）',26.212,127.681],
+  ['高知県南国市',33.576,133.641],['高知県室戸岬',33.245,134.177],['和歌山県潮岬',33.437,135.762],['静岡県御前崎',34.598,138.226],
+  ['東京都八丈島',33.109,139.789],['東京都父島',27.094,142.192],['千葉県銚子',35.735,140.827],['種子島（南種子町）',30.413,130.905],
+];
+const DEFAULT_PLACE = '高知県南国市';
+let obs = null;
+
+function loadObs() {
+  try { const s = JSON.parse(localStorage.getItem('mmxh3-obs')); if (s && isFinite(s.lat)) return s; } catch (e) {}
+  const p = PLACES.find(x => x[0] === DEFAULT_PLACE);
+  return { name: p[0], lat: p[1], lon: p[2] };
+}
+function saveObs() { try { localStorage.setItem('mmxh3-obs', JSON.stringify(obs)); } catch (e) {} }
+
+// ===== 表示ユーティリティ =====
+const DIRS = ['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+const dirName = az => DIRS[Math.round(az / 22.5) % 16];
+const pad2 = n => String(n).padStart(2, '0');
+const hms = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+const fmtT = s => { const a = Math.abs(Math.round(s)); return `${s < 0 ? '−' : '+'}${Math.floor(a/60)}:${pad2(a%60)}`; };
+const $ = id => document.getElementById(id);
+
+function launchDate() {
+  const [y, m, d] = $('ldate').value.split('-').map(Number);
+  const [hh, mm, ss] = ($('ltime').value + ':0:0').split(':').map(Number);
+  return new Date(Date.UTC(y, m-1, d, hh - 9, mm, ss || 0)); // JST 入力 → UTC
+}
+// 端末のタイムゾーンによらず JST で表示
+function jst(d) { const x = new Date(d.getTime() + 9*3600e3); return { getHours: () => x.getUTCHours(), getMinutes: () => x.getUTCMinutes(), getSeconds: () => x.getUTCSeconds() }; }
+
+// ===== 経路計算 =====
+let track = []; // 1 秒ごと
+function computeTrack() {
+  const L = launchDate();
+  track = [];
+  for (let t = 0; t <= T_END; t++) {
+    const p = rocketAt(t), date = new Date(L.getTime() + t*1000);
+    const la = lookAngle(obs, p);
+    track.push({ t, ...p, ...la, lit: sunlit(p, date) });
+  }
+}
+function visibleWindow() {
+  const v = track.filter(p => p.el > 0);
+  return v.length ? { from: v[0].t, to: v[v.length-1].t } : null;
+}
+
+// ===== 地図 =====
+let map, obsMarker, lineObs, rocketMarker;
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: true }).setView([32, 137], 4);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 10, attribution: 'Esri' }).addTo(map);
+  const pts = []; for (let t = 0; t <= T_END; t += 5) { const p = rocketAt(t); pts.push([p.lat, p.lon]); }
+  L.polyline(pts, { color: '#ffb347', weight: 3 }).addTo(map);
+  EVENTS.forEach(e => {
+    const p = rocketAt(e.t);
+    L.circleMarker([p.lat, p.lon], { radius: e.key ? 8 : 4, color: e.key ? '#ff5a5a' : '#ffd25a', fillOpacity: 1, weight: 2 })
+      .bindTooltip(`${e.name}（X${fmtT(e.t)}, 高度${Math.round(altAt(e.t))}km）`).addTo(map);
+  });
+  L.circleMarker([PAD.lat, PAD.lon], { radius: 4, color: '#fff', fillOpacity: 1 }).bindTooltip('種子島宇宙センター').addTo(map);
+  rocketMarker = L.circleMarker([PAD.lat, PAD.lon], { radius: 6, color: '#fff', fillColor: '#ff3d3d', fillOpacity: 1, weight: 2 });
+}
+function updateMap() {
+  if (!map) return;
+  const sp = rocketAt(SEP_T);
+  if (obsMarker) map.removeLayer(obsMarker);
+  if (lineObs) map.removeLayer(lineObs);
+  obsMarker = L.circleMarker([obs.lat, obs.lon], { radius: 6, color: '#5fd68a', fillOpacity: 1 }).bindTooltip(obs.name).addTo(map);
+  lineObs = L.polyline([[obs.lat, obs.lon], [sp.lat, sp.lon]], { color: '#5fd68a', weight: 1.5, dashArray: '4 4' }).addTo(map);
+  map.fitBounds(L.latLngBounds([[obs.lat, obs.lon], [PAD.lat, PAD.lon], [sp.lat, sp.lon], [26, 158]]), { padding: [10, 10] });
+}
+
+// ===== 天空図 =====
+function drawSky(curT) {
+  const c = $('sky'), g = c.getContext('2d'), W = c.width, cx = W/2, cy = W/2, R = W/2 - 40;
+  g.clearRect(0, 0, W, W);
+  g.fillStyle = '#0e1428'; g.beginPath(); g.arc(cx, cy, R, 0, 2*Math.PI); g.fill();
+  g.strokeStyle = '#2a3458'; g.lineWidth = 2;
+  [0, 30, 60].forEach(el => { g.beginPath(); g.arc(cx, cy, R*(90-el)/90, 0, 2*Math.PI); g.stroke(); });
+  g.beginPath(); g.moveTo(cx-R, cy); g.lineTo(cx+R, cy); g.moveTo(cx, cy-R); g.lineTo(cx, cy+R); g.stroke();
+  g.fillStyle = '#93a0c4'; g.font = '26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('北', cx, cy-R-20); g.fillText('南', cx, cy+R+20); g.fillText('東', cx+R+20, cy); g.fillText('西', cx-R-20, cy);
+  g.font = '18px sans-serif'; g.fillText('30°', cx+6, cy-R*60/90+14); g.fillText('60°', cx+6, cy-R*30/90+14);
+  const xy = p => { const r = R*(90-p.el)/90; return [cx + r*Math.sin(p.az*D2R), cy - r*Math.cos(p.az*D2R)]; };
+  g.lineWidth = 5; g.lineCap = 'round';
+  for (let i = 1; i < track.length; i++) {
+    const a = track[i-1], b = track[i];
+    if (a.el < 0 && b.el < 0) continue;
+    const pa = xy({ az: a.az, el: Math.max(a.el, 0) }), pb = xy({ az: b.az, el: Math.max(b.el, 0) });
+    g.strokeStyle = b.lit ? '#ffd25a' : '#7f8bb0';
+    g.beginPath(); g.moveTo(pa[0], pa[1]); g.lineTo(pb[0], pb[1]); g.stroke();
+  }
+  // イベント点
+  EVENTS.forEach(e => {
+    const p = track[e.t]; if (!p || p.el < 0) return;
+    const [x, y] = xy(p);
+    if (e.key) {
+      g.fillStyle = '#ff5a5a'; g.beginPath(); g.moveTo(x, y-14); g.lineTo(x+14, y); g.lineTo(x, y+14); g.lineTo(x-14, y); g.closePath(); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 22px sans-serif'; g.textAlign = x > cx ? 'right' : 'left';
+      g.fillText('第1段分離', x + (x > cx ? -20 : 20), y - 20);
+    } else {
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 5, 0, 2*Math.PI); g.fill();
+    }
+  });
+  if (curT != null && curT >= 0 && curT <= T_END) {
+    const p = track[Math.round(curT)];
+    if (p && p.el > 0) { const [x, y] = xy(p); g.fillStyle = '#ff3d3d'; g.strokeStyle = '#fff'; g.lineWidth = 3;
+      g.beginPath(); g.arc(x, y, 11, 0, 2*Math.PI); g.fill(); g.stroke(); }
+  }
+}
+
+// ===== 結果表示 =====
+function sepAt(o) {
+  const p = rocketAt(SEP_T); return lookAngle(o, p);
+}
+function render() {
+  computeTrack();
+  const L0 = launchDate(), sepDate = new Date(L0.getTime() + SEP_T*1000);
+  const s = track[SEP_T];
+  $('obsinfo').textContent = `${obs.name}（北緯${obs.lat.toFixed(3)}° 東経${obs.lon.toFixed(3)}°）`;
+  $('septime').textContent = hms(jst(sepDate)) + ' 頃';
+  $('sepaz').textContent = `${dirName(s.az)}`;
+  $('sepel').textContent = `${s.el.toFixed(1)}°`;
+  $('sepdist').textContent = `${Math.round(s.rng)}km`;
+  const sunAlt = sunAltAt(obs, sepDate), vw = visibleWindow();
+  let v = `方位角 ${s.az.toFixed(0)}°（${dirName(s.az)}）・仰角 ${s.el.toFixed(1)}° の空。分離点は高度 ${Math.round(s.alt)} km、北緯 ${s.lat.toFixed(1)}° 東経 ${s.lon.toFixed(1)}° 付近（推定）。<br>`;
+  if (s.el <= 0) v += '<span class="tag t-ng">地平線の下</span> この地点からは分離の瞬間は見えません。';
+  else if (s.el < 5) v += '<span class="tag t-ng">ほぼ地平線</span> 仰角が低く、水平線まで開けた場所でないと見えにくい位置です。';
+  else if (s.el < 15) v += '<span class="tag t-ok">低い空</span> 方角の開けた場所なら見える可能性があります。';
+  else v += '<span class="tag t-ok">見やすい高さ</span>';
+  v += s.lit ? ' <span class="tag t-sun">日が当たる</span>' : ' <span class="tag">地球の影の中</span>';
+  v += `<br>そのときの太陽高度（観測地）: ${sunAlt.toFixed(1)}°` + (sunAlt < -12 ? '（空は暗い）' : sunAlt < -6 ? '（夜明け前の薄明）' : sunAlt < 0 ? '（明るくなりはじめ）' : '（日の出後）');
+  if (vw) v += `<br>ロケットが地平線上にあるのは X${fmtT(vw.from)} 〜 ${vw.to >= T_END ? 'X+10:40 以降' : 'X' + fmtT(vw.to)}（${hms(jst(new Date(L0.getTime() + vw.from*1000)))}〜）`;
+  $('verdict').innerHTML = v;
+
+  // イベント表
+  let h = '<tr><th>イベント</th><th>時刻</th><th>方角</th><th>仰角</th><th>距離</th></tr>';
+  EVENTS.forEach(e => {
+    const p = track[e.t];
+    h += `<tr class="${e.key ? 'hl' : ''}"><td>${e.name}<br><span style="color:var(--mut);font-size:11px">X${fmtT(e.t)}・高度${Math.round(p.alt)}km${p.lit ? ' ☀' : ''}</span></td>` +
+         `<td>${hms(jst(new Date(L0.getTime() + e.t*1000)))}</td><td>${dirName(p.az)}<br><span style="font-size:11px;color:var(--mut)">${p.az.toFixed(0)}°</span></td>` +
+         `<td>${p.el > 0 ? p.el.toFixed(1) + '°' : '<span style="color:var(--ng)">' + p.el.toFixed(1) + '°</span>'}</td><td>${Math.round(p.rng)}km</td></tr>`;
+  });
+  $('evt').innerHTML = h;
+
+  // 各地ランキング
+  const rows = PLACES.map(p => ({ name: p[0], lat: p[1], lon: p[2], ...sepAt({ lat: p[1], lon: p[2] }) })).sort((a, b) => b.el - a.el);
+  let r = '<tr><th>地点</th><th>方角</th><th>仰角</th><th>距離</th></tr>';
+  rows.forEach(x => {
+    r += `<tr class="click ${x.name === obs.name ? 'hl' : ''}" data-n="${x.name}"><td>${x.name}</td><td>${dirName(x.az)}</td>` +
+         `<td>${x.el > 0 ? x.el.toFixed(1) + '°' : '<span style="color:var(--ng)">見えない</span>'}</td><td>${Math.round(x.rng)}km</td></tr>`;
+  });
+  $('rank').innerHTML = r;
+  $('rank').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => {
+    $('place').value = tr.dataset.n; selectPlace(tr.dataset.n); window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  drawSky(null);
+  updateMap();
+}
+
+// ===== 地点選択 =====
+function fillPlaces() {
+  const sel = $('place');
+  sel.innerHTML = PLACES.map(p => `<option>${p[0]}</option>`).join('') + '<option value="__gps">📍 現在地</option>';
+  const has = PLACES.some(p => p[0] === obs.name);
+  if (!has) { const o = document.createElement('option'); o.textContent = obs.name; sel.insertBefore(o, sel.lastChild); }
+  sel.value = obs.name;
+}
+function selectPlace(name) {
+  if (name === '__gps') return useGps();
+  const p = PLACES.find(x => x[0] === name);
+  if (p) { obs = { name: p[0], lat: p[1], lon: p[2] }; saveObs(); render(); }
+}
+function useGps() {
+  if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); return; }
+  $('obsinfo').textContent = '現在地を取得中…';
+  navigator.geolocation.getCurrentPosition(pos => {
+    obs = { name: '現在地', lat: pos.coords.latitude, lon: pos.coords.longitude };
+    saveObs(); fillPlaces(); render();
+  }, err => { alert('現在地を取得できませんでした: ' + err.message); $('place').value = obs.name; render(); },
+  { enableHighAccuracy: true, timeout: 15000 });
+}
+
+// ===== 音声・カウントダウン =====
+let jaVoice = null;
+function pickVoice() { const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => v.lang === 'ja-JP') || vs.find(v => /^ja/.test(v.lang)) || null; }
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (!('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; if (jaVoice) u.voice = jaVoice; u.rate = 1.1;
+  speechSynthesis.speak(u);
+}
+const NUM_DEG = x => `${Math.round(x)}度`;
+
+// mode: null（待機表示） / 'live' / 'sim'
+let mode = null, simStartReal = 0, simSpeed = 1, lastSec = null, timer = null;
+const SIM_FROM = -60, SIM_TO = T_END + 20;
+
+function currentT() {
+  if (mode === 'sim') return SIM_FROM + (performance.now() - simStartReal) / 1000 * simSpeed;
+  return (Date.now() - launchDate().getTime()) / 1000;
+}
+function announce(sec) {
+  const s = track[SEP_T];
+  // イベント
+  const e = EVENTS.find(x => x.t === sec);
+  if (e) {
+    if (e.key) {
+      say(s.el > 0 ? `第1段分離。${dirName(s.az)}、仰角${NUM_DEG(s.el)}` : '第1段分離。この地点からは地平線の下です');
+    } else say(e.say);
+    return;
+  }
+  const vw = visibleWindow();
+  if (vw && sec === vw.from && sec > 0) { say(`ロケットが地平線から昇ります。${dirName(track[sec].az)}の空`); return; }
+  // 打上げ前
+  if (sec < 0) {
+    const r = -sec;
+    if (r === 60) say('打上げ1分前');
+    else if (r === 30) say('打上げ30秒前');
+    else if (r <= 10) say(String(r));
+    return;
+  }
+  // 分離前
+  const toSep = SEP_T - sec;
+  if (toSep === 60) say(`第1段分離まで1分。${dirName(s.az)}の空、仰角${NUM_DEG(s.el)}`);
+  else if (toSep > 0 && toSep <= 30 && toSep % 10 === 0) say(`分離まで${toSep}秒`);
+  else if (toSep > 0 && toSep <= 5) say(String(toSep));
+}
+function tick() {
+  const t = currentT(), sec = Math.floor(t);
+  if (mode === 'sim' && t > SIM_TO) { stopAll(); return; }
+  // 表示
+  if (t < 0) {
+    $('cdlabel').textContent = '打上げまで';
+    const a = -t, d = Math.floor(a / 86400), hh = Math.floor(a % 86400 / 3600), mm = Math.floor(a % 3600 / 60), ss = Math.floor(a % 60);
+    $('cd').textContent = (d ? `${d}日 ` : '') + `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
+    $('nowpos').textContent = mode === 'sim' ? `シミュレーション再生中（${simSpeed}倍速）` : '';
+  } else if (t < SEP_T) {
+    $('cdlabel').textContent = '第1段分離まで';
+    $('cd').textContent = `${Math.ceil(SEP_T - t)} 秒`;
+  } else {
+    $('cdlabel').textContent = '第1段分離から';
+    $('cd').textContent = `${Math.floor(t - SEP_T)} 秒経過`;
+  }
+  if (t >= 0 && t <= T_END) {
+    const p = track[Math.round(t)];
+    $('nowpos').textContent = `X${fmtT(t)}  高度${Math.round(p.alt)}km  ${dirName(p.az)} 仰角${p.el.toFixed(1)}°` + (p.el < 0 ? '（地平線下）' : '') + (mode === 'sim' ? `  [${simSpeed}倍速]` : '');
+    if (rocketMarker) { rocketMarker.setLatLng([p.lat, p.lon]); if (!map.hasLayer(rocketMarker)) rocketMarker.addTo(map); }
+  } else if (t > T_END && mode) { $('nowpos').textContent = '第2段第1回燃焼停止を過ぎました'; }
+  if (mode) drawSky(t);
+  // 読み上げ（1秒ごとに1回、早送りでも取りこぼさない）
+  if (mode && lastSec !== null && sec !== lastSec) {
+    for (let k = lastSec + 1; k <= sec; k++) {
+      if (simSpeed > 1 && mode === 'sim' && !EVENTS.some(e => e.t === k) && !(k < 0 && -k <= 3)) continue;
+      announce(k);
+    }
+  }
+  if (mode) lastSec = sec;
+}
+function startMode(m, speed) {
+  if ('speechSynthesis' in window) { speechSynthesis.cancel(); say(m === 'sim' ? 'シミュレーションを開始します' : '読み上げを開始します'); }
+  mode = m; simSpeed = speed || 1; simStartReal = performance.now();
+  lastSec = Math.floor(currentT());
+  if (m === 'live' && 'wakeLock' in navigator) navigator.wakeLock.request('screen').catch(() => {});
+  $('live').textContent = m === 'live' ? '🔊 本番の読み上げ中' : '🔊 本番の読み上げ開始';
+}
+function stopAll() {
+  mode = null; lastSec = null; simSpeed = 1;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  $('live').textContent = '🔊 本番の読み上げ開始';
+  if (rocketMarker && map && map.hasLayer(rocketMarker)) map.removeLayer(rocketMarker);
+  drawSky(null);
+}
+
+// ===== 起動 =====
+obs = loadObs();
+fillPlaces();
+try { initMap(); } catch (e) { $('map').textContent = '地図を読み込めませんでした'; }
+render();
+$('place').onchange = e => selectPlace(e.target.value);
+$('gps').onclick = useGps;
+$('ldate').onchange = $('ltime').onchange = () => { stopAll(); render(); };
+$('live').onclick = () => startMode('live');
+$('sim1').onclick = () => startMode('sim', 1);
+$('sim10').onclick = () => startMode('sim', 10);
+$('stop').onclick = stopAll;
+timer = setInterval(tick, 200);
+tick();
+</script>
+</body>
+</html>
