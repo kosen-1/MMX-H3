@@ -60,6 +60,13 @@
     .cbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
     .cbtns button { font-size:13px; padding:7px 2px; white-space:nowrap; }
     #nowpos:empty { display:none; }
+    /* 打上げ後の位置表示：数字が変わっても横幅が動かないよう各欄の幅を固定 */
+    #nowpos.np { display:flex; justify-content:center; align-items:center; gap:6px; margin:6px 0 2px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    #nowpos .tb { background:#fff; color:#0b1020; font-size:20px; font-weight:bold; border-radius:6px; padding:1px 6px; width:4.4em; text-align:center; }
+    #nowpos .c { display:inline-block; text-align:right; font-size:12.5px; color:var(--mut); }
+    #nowpos .c b { color:var(--fg); font-size:14px; }
+    #nowpos .c1 { width:5.6em; } #nowpos .c2 { width:3.2em; text-align:center; } #nowpos .c3 { width:6em; }
+    #nowpos .below { color:var(--ng) !important; }
     .rank-wrap { max-height:320px; overflow-y:auto; }
   </style>
 </head>
@@ -643,7 +650,7 @@ function tick() {
     $('cdlabel').textContent = '打上げまで';
     const a = Math.ceil(-t), d = Math.floor(a / 86400), hh = Math.floor(a % 86400 / 3600), mm = Math.floor(a % 3600 / 60), ss = a % 60; // 残り秒は切り上げ（読み上げの数字と合わせる）
     $('cd').textContent = (d ? `${d}日 ` : '') + `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
-    $('nowpos').textContent = mode === 'sim' ? `シミュレーション再生中（${simSpeed}倍速）` : '';
+    $('nowpos').className = 'mid'; $('nowpos').textContent = mode === 'sim' ? `シミュレーション再生中（${simSpeed}倍速）` : '';
   } else if (t < SEP_T) {
     $('cdlabel').textContent = '第1段・第2段分離まで';
     $('cd').textContent = `${Math.ceil(SEP_T - t)} 秒`;
@@ -653,9 +660,10 @@ function tick() {
   }
   if (t >= 0 && t <= T_END) {
     const p = track[Math.round(t)];
-    $('nowpos').textContent = `T${fmtT(t)}  高度${Math.round(p.alt)}km  ${dirName(p.az)} 仰角${p.el.toFixed(1)}°` + (p.el < 0 ? '（地平線下）' : '') + (mode === 'sim' ? `  [${simSpeed}倍速]` : '');
+    $('nowpos').className = 'np';
+    $('nowpos').innerHTML = `<span class="tb">T${fmtT(t)}</span><span class="c c1">高度 <b>${Math.round(p.alt)}</b>km</span><span class="c c2"><b>${dirName(p.az)}</b></span><span class="c c3">仰角 <b class="${p.el < 0 ? 'below' : ''}">${p.el.toFixed(1)}°</b></span>`;
     if (rocketMarker) { rocketMarker.setLatLng([p.lat, p.lon]); if (!map.hasLayer(rocketMarker)) rocketMarker.addTo(map); }
-  } else if (t > T_END && mode) { $('nowpos').textContent = '第2段第1回燃焼停止を過ぎました'; }
+  } else if (t > T_END && mode) { $('nowpos').className = 'mid'; $('nowpos').textContent = '第2段第1回燃焼停止を過ぎました'; }
   if (mode && performance.now() - lastDraw > 200) { lastDraw = performance.now(); drawSky(t); }
   // 読み上げ（1秒ごとに1回、早送りでも取りこぼさない）
   if (mode && lastSec !== null && sec !== lastSec) {
