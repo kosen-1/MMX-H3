@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
-    :root { --bg:#0b1020; --card:#151c33; --line:#2a3458; --fg:#e8ecf8; --mut:#93a0c4; --acc:#ffb347; --ok:#5fd68a; --ng:#ff6b6b; --sun:#ffd25a; --sh:#7f8bb0; }
+    :root { --bg:#0b1020; --card:#1b2546; --line:#3b4a7c; --fg:#e8ecf8; --mut:#93a0c4; --acc:#ffb347; --ok:#5fd68a; --ng:#ff6b6b; --sun:#ffd25a; --sh:#7f8bb0; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; font-size:15px;
            padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 16px); }
@@ -65,7 +65,7 @@
 </head>
 <body>
   <h1>🚀 MMX-H3 第1段・第2段分離 Watch</h1>
-  <div class="sub">H3ロケット（MMX）第1段・第2段分離（X+4分59秒）が日本各地からいつ・どこで見えるかのシミュレーションを行います。</div>
+  <div class="sub">H3ロケット（MMX）第1段・第2段分離（T+4分59秒）が日本各地からいつ・どこで見えるかのシミュレーションを行います。</div>
 
   <div class="card">
     <h2 style="display:flex;align-items:center;justify-content:space-between;gap:4px;white-space:nowrap">打上げ日時の設定（日本標準時）<button id="lreset" style="font-size:12px;font-weight:normal;padding:4px 8px;border-radius:8px;color:var(--fg);white-space:nowrap">↺ 計画値に戻す</button></h2>
@@ -89,7 +89,7 @@
   </div>
 
   <div class="card">
-    <h2 id="viewtitle">南の空の見え方</h2>
+    <h2 style="display:flex;align-items:baseline;justify-content:space-between;gap:4px"><span id="viewtitle">南の空の見え方</span><span id="nowclock" style="flex:0 0 auto;font-size:11.5px;font-weight:bold;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap"></span></h2>
     <canvas id="view" width="720" height="260" style="width:100%;display:block;border-radius:8px"></canvas>
     <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段・第2段分離</span></div>
   </div>
@@ -134,7 +134,7 @@
   <div class="card note">
     <b>計算方法と注意</b><br>
     ・JAXA「2026年度 ロケット打上げ計画書 火星衛星探査機(MMX)／H3ロケット」（2026年8月）の表2（各イベントの経過時間・高度）と図3（飛行経路）から、種子島 吉信射点から真東（方位90°）に打ち上げ、図3の第1段燃焼停止・第2段第1回燃焼停止の位置を通って徐々に南へ曲がる経路を推定しています。<br>
-    ・水平距離（ダウンレンジ）は表2の高度・慣性速度から求めた値と図3の位置を平均したもので、第1段・第2段分離（X+299秒・高度214 km）は 北緯約30.1°・東経約138.1°（遠州灘〜伊豆諸島の南方沖）と推定。位置の誤差は数十 km 程度、方角・仰角は数度ずれる可能性があります。<br>
+    ・水平距離（ダウンレンジ）は表2の高度・慣性速度から求めた値と図3の位置を平均したもので、第1段・第2段分離（T+299秒・高度214 km）は 北緯約30.1°・東経約138.1°（遠州灘〜伊豆諸島の南方沖）と推定。位置の誤差は数十 km 程度、方角・仰角は数度ずれる可能性があります。<br>
     ・「日が当たる」は地球を球として、機体位置が地球の影の外にあるかを判定したものです。夜明け前の空で日が当たる高度にある排気ガスは明るく広がって見えることがありますが、天候・大気の状態で大きく変わります。<br>
     ・大気差（屈折）や地形の影響は考慮していません。仰角が低い場合は山や建物に隠れます。
   </div>
@@ -143,7 +143,7 @@
 'use strict';
 // ===== 飛行計画（計画書 表2）=====
 const EVENTS = [
-  { t: 0,   name: 'リフトオフ',            say: 'リフトオフ' },
+  { t: 0,   name: 'リフトオフ',            say: 'ロケット発射' },
   { t: 116, name: 'SRB-3 第1ペア分離',     say: '固体ロケットブースタ分離' },
   { t: 197, name: '衛星フェアリング分離',   say: '衛星フェアリング分離' },
   { t: 292, name: '第1段燃焼停止 MECO',    say: '第1段エンジン燃焼停止' },
@@ -315,7 +315,7 @@ function initMap() {
   EVENTS.forEach(e => {
     const p = rocketAt(e.t);
     L.circleMarker([p.lat, p.lon], { radius: e.key ? 8 : 4, color: e.key ? '#ff5a5a' : '#ffd25a', fillOpacity: 1, weight: 2 })
-      .bindTooltip(`${e.name}（X${fmtT(e.t)}, 高度${Math.round(altAt(e.t))}km）`).addTo(map);
+      .bindTooltip(`${e.name}（T${fmtT(e.t)}, 高度${Math.round(altAt(e.t))}km）`).addTo(map);
   });
   L.circleMarker([PAD.lat, PAD.lon], { radius: 5, color: '#fff', fillOpacity: 1 })
     .bindTooltip('種子島', { permanent: true, direction: 'left', className: 'mlabel', offset: [-6, 0] }).addTo(map);
@@ -469,7 +469,7 @@ function drawView(curT) {
   if (vw && vw.from > 0) {
     const p = track[vw.from], x = xAz(p.az);
     if (x > 0 && x < W) { g.fillStyle = '#5fd68a'; g.beginPath(); g.moveTo(x, y0 - 2); g.lineTo(x - 9, y0 + 12); g.lineTo(x + 9, y0 + 12); g.closePath(); g.fill();
-      g.font = '20px sans-serif'; g.textAlign = x > W/2 ? 'right' : 'left'; g.fillText(`昇る X${fmtT(vw.from)}`, x + (x > W/2 ? -14 : 14), y0 + 26); }
+      g.font = '20px sans-serif'; g.textAlign = x > W/2 ? 'right' : 'left'; g.fillText(`昇る T${fmtT(vw.from)}`, x + (x > W/2 ? -14 : 14), y0 + 26); }
   }
   // 現在位置
   if (curT != null && curT >= 0 && curT <= T_END) {
@@ -504,7 +504,7 @@ function render() {
   let h = '<tr><th>イベント</th><th>時刻</th><th>方角</th><th>仰角</th><th>距離</th></tr>';
   EVENTS.forEach(e => {
     const p = track[e.t];
-    h += `<tr class="${e.key ? 'hl' : ''}"><td>${e.name}<br><span style="color:var(--mut);font-size:11px">X${fmtT(e.t)}・高度${Math.round(p.alt)}km${p.lit ? ' ☀' : ''}</span></td>` +
+    h += `<tr class="${e.key ? 'hl' : ''}"><td>${e.name}<br><span style="color:var(--mut);font-size:11px">T${fmtT(e.t)}・高度${Math.round(p.alt)}km${p.lit ? ' ☀' : ''}</span></td>` +
          `<td>${hms(jst(new Date(L0.getTime() + e.t*1000)))}</td><td>${dirName(p.az)}<br><span style="font-size:11px;color:var(--mut)">${p.az.toFixed(0)}°</span></td>` +
          `<td>${p.el > 0 ? p.el.toFixed(1) + '°' : '<span style="color:var(--ng)">' + p.el.toFixed(1) + '°</span>'}</td><td>${Math.round(p.rng)}km</td></tr>`;
   });
@@ -563,8 +563,9 @@ function useGps() {
 let jaVoice = null;
 function pickVoice() { const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => v.lang === 'ja-JP') || vs.find(v => /^ja/.test(v.lang)) || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function say(text) {
+function say(text, now) {
   if (!('speechSynthesis' in window)) return;
+  if (now) speechSynthesis.cancel(); // 秒読みは前の読み上げを待たずに今の数字を言う
   const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; if (jaVoice) u.voice = jaVoice; u.rate = 1.1;
   speechSynthesis.speak(u);
 }
@@ -572,11 +573,21 @@ const NUM_DEG = x => `${Math.round(x)}度`;
 
 // mode: null（待機表示） / 'live' / 'sim'
 let mode = null, simStartReal = 0, simSpeed = 1, lastSec = null, timer = null;
-const SIM_FROM = -60, SIM_TO = T_END + 20;
+const SIM_FROM = -60, SIM_TO = T_END + 20, SLOW_FROM = -10, SLOW_TO = 0;
+const SPEECH_LEAD = 0.3; // [s]
+let lastDraw = 0;
 
-function currentT() {
-  if (mode === 'sim') return SIM_FROM + (performance.now() - simStartReal) / 1000 * simSpeed;
-  return (Date.now() - launchDate().getTime()) / 1000;
+// ahead: 何秒（実時間）先の時刻を求めるか。読み上げの先出しに使う
+function currentT(ahead = 0) {
+  if (mode === 'sim') {
+    // 早送りでも打上げ10秒前〜発射は実時間で進め、秒読みを1秒おきに読み上げる
+    const e = (performance.now() - simStartReal) / 1000 + ahead, v = simSpeed;
+    const e1 = (SLOW_FROM - SIM_FROM) / v, e2 = e1 + (SLOW_TO - SLOW_FROM);
+    if (e < e1) return SIM_FROM + e * v;
+    if (e < e2) return SLOW_FROM + (e - e1);
+    return SLOW_TO + (e - e2) * v;
+  }
+  return (Date.now() - launchDate().getTime()) / 1000 + ahead;
 }
 function announce(sec) {
   const s = track[SEP_T];
@@ -595,7 +606,7 @@ function announce(sec) {
     const r = -sec;
     if (r === 60) say('打上げ1分前');
     else if (r === 30) say('打上げ30秒前');
-    else if (r <= 10) say(String(r));
+    else if (r <= 10) say(String(r), true);
     return;
   }
   // 分離前
@@ -605,12 +616,17 @@ function announce(sec) {
   else if (toSep > 0 && toSep <= 5) say(String(toSep));
 }
 function tick() {
-  const t = currentT(), sec = Math.floor(t);
+  // 現在の日時（日本標準時）
+  { const x = new Date(Date.now() + 9*3600e3);
+    $('nowclock').innerHTML = `<span style="font-size:10px;font-weight:normal;color:var(--mut);margin-right:3px">現在時刻</span>${pad2(x.getUTCMonth()+1)}/${pad2(x.getUTCDate())} ${pad2(x.getUTCHours())}:${pad2(x.getUTCMinutes())}:${pad2(x.getUTCSeconds())}`; }
+  const t = currentT();
+  // 読み上げは音声エンジンの立ち上がり分だけ早めに出す（実時間で SPEECH_LEAD 秒先の時刻で判定）
+  const sec = Math.floor(currentT(SPEECH_LEAD));
   if (mode === 'sim' && t > SIM_TO) { stopAll(); return; }
   // 表示
   if (t < 0) {
     $('cdlabel').textContent = '打上げまで';
-    const a = -t, d = Math.floor(a / 86400), hh = Math.floor(a % 86400 / 3600), mm = Math.floor(a % 3600 / 60), ss = Math.floor(a % 60);
+    const a = Math.ceil(-t), d = Math.floor(a / 86400), hh = Math.floor(a % 86400 / 3600), mm = Math.floor(a % 3600 / 60), ss = a % 60; // 残り秒は切り上げ（読み上げの数字と合わせる）
     $('cd').textContent = (d ? `${d}日 ` : '') + `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
     $('nowpos').textContent = mode === 'sim' ? `シミュレーション再生中（${simSpeed}倍速）` : '';
   } else if (t < SEP_T) {
@@ -622,14 +638,14 @@ function tick() {
   }
   if (t >= 0 && t <= T_END) {
     const p = track[Math.round(t)];
-    $('nowpos').textContent = `X${fmtT(t)}  高度${Math.round(p.alt)}km  ${dirName(p.az)} 仰角${p.el.toFixed(1)}°` + (p.el < 0 ? '（地平線下）' : '') + (mode === 'sim' ? `  [${simSpeed}倍速]` : '');
+    $('nowpos').textContent = `T${fmtT(t)}  高度${Math.round(p.alt)}km  ${dirName(p.az)} 仰角${p.el.toFixed(1)}°` + (p.el < 0 ? '（地平線下）' : '') + (mode === 'sim' ? `  [${simSpeed}倍速]` : '');
     if (rocketMarker) { rocketMarker.setLatLng([p.lat, p.lon]); if (!map.hasLayer(rocketMarker)) rocketMarker.addTo(map); }
   } else if (t > T_END && mode) { $('nowpos').textContent = '第2段第1回燃焼停止を過ぎました'; }
-  if (mode) drawSky(t);
+  if (mode && performance.now() - lastDraw > 200) { lastDraw = performance.now(); drawSky(t); }
   // 読み上げ（1秒ごとに1回、早送りでも取りこぼさない）
   if (mode && lastSec !== null && sec !== lastSec) {
     for (let k = lastSec + 1; k <= sec; k++) {
-      if (simSpeed > 1 && mode === 'sim' && !EVENTS.some(e => e.t === k) && !(k < 0 && -k <= 3)) continue;
+      if (simSpeed > 1 && mode === 'sim' && !EVENTS.some(e => e.t === k) && !(k < 0 && -k <= 10)) continue;
       announce(k);
     }
   }
@@ -674,7 +690,7 @@ $('live').onclick = () => startMode('live');
 $('sim1').onclick = () => startMode('sim', 1);
 $('sim10').onclick = () => startMode('sim', 10);
 $('stop').onclick = stopAll;
-timer = setInterval(tick, 200);
+timer = setInterval(tick, 50);
 tick();
 </script>
 </body>
