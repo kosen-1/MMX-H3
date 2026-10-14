@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0b1020">
-  <title>MMX-H3 第1段分離ウォッチ</title>
+  <title>MMX-H3 第1段・第2段分離 Watch</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
@@ -28,13 +28,15 @@
     .btns button { flex:1; }
     .big { font-size:30px; font-weight:bold; font-variant-numeric:tabular-nums; text-align:center; }
     .mid { text-align:center; color:var(--mut); font-size:13px; }
-    .sep { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center; margin-top:6px; }
-    .sep div { background:#0e1428; border-radius:8px; padding:6px 2px; }
-    .sep b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
-    .sep span { font-size:11px; color:var(--mut); }
-    .verdict { margin-top:8px; padding:8px; border-radius:8px; font-size:14px; line-height:1.5; background:#0e1428; }
-    #map { height:230px; border-radius:10px; }
-    #sky { width:100%; max-width:360px; display:block; margin:0 auto; aspect-ratio:1; }
+    .sep { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center; }
+    .sep div { background:#0e1428; border-radius:8px; padding:4px 2px; white-space:nowrap; }
+    .sep b { font-size:18px; font-variant-numeric:tabular-nums; }
+    .sep span { font-size:11px; color:var(--mut); margin-right:4px; }
+    #map { height:280px; border:2px solid #7d8cc0; border-radius:6px; }
+    #map .leaflet-tile-pane { filter:brightness(1.9) contrast(1.15); }
+    .mlabel { background:rgba(11,16,32,.85); color:#fff; border:1px solid #7d8cc0; border-radius:4px; padding:1px 5px; font-size:11px; font-weight:bold; box-shadow:none; }
+    .mlabel::before { display:none; }
+    #sky { width:100%; max-width:220px; display:block; margin:0 auto; aspect-ratio:1; }
     table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
     th, td { padding:5px 3px; border-bottom:1px solid var(--line); text-align:right; }
     th:first-child, td:first-child { text-align:left; }
@@ -49,70 +51,68 @@
     .t-ok { background:#1d4d33; color:var(--ok); } .t-ng { background:#4d1d24; color:var(--ng); } .t-sun { background:#4d3f12; color:var(--sun); }
     .leaflet-container { font-family:inherit; background:#222; }
     .leaflet-control-attribution { font-size:9px; }
+    .tsel { align-items:center; gap:0; justify-content:center; }
+    .row.tsel > * { flex:0 0 auto; }
+    .tsel select { width:1.6em; font-size:17px; font-weight:bold; padding:4px 0; border:none; border-bottom:1px dashed var(--mut); border-radius:0; background:transparent; text-align:center; text-align-last:center; -webkit-appearance:none; appearance:none; }
+    .tsel select#ly { width:2.7em; }
+    .tsel span { font-size:14px; color:var(--fg); margin:0 1px; }
+    .tsel span.gap { margin-right:10px; }
+    .cbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
+    .cbtns button { font-size:13px; padding:7px 2px; white-space:nowrap; }
+    #nowpos:empty { display:none; }
     .rank-wrap { max-height:320px; overflow-y:auto; }
   </style>
 </head>
 <body>
-  <h1>🚀 MMX-H3 第1段分離ウォッチ</h1>
-  <div class="sub">H3ロケット（MMX）第1段・第2段分離（X+4分59秒）が日本各地からいつ・どこに見えるかのシミュレーション</div>
+  <h1>🚀 MMX-H3 第1段・第2段分離 Watch</h1>
+  <div class="sub">H3ロケット（MMX）第1段・第2段分離（X+4分59秒）が日本各地からいつ・どこで見えるかのシミュレーションを行います。</div>
 
   <div class="card">
-    <h2>打上げ日時（日本標準時）</h2>
-    <div class="row">
-      <div><label>日付</label><input type="date" id="ldate" value="2026-10-20"></div>
-      <div><label>時刻</label><input type="time" id="ltime" step="1" value="04:41:03"></div>
+    <h2 style="display:flex;align-items:center;justify-content:space-between;gap:4px;white-space:nowrap">打上げ日時の設定（日本標準時）<button id="lreset" style="font-size:12px;font-weight:normal;padding:4px 8px;border-radius:8px;color:var(--fg);white-space:nowrap">↺ 計画値に戻す</button></h2>
+    <div class="row tsel">
+      <select id="ly"></select><span>年</span><select id="lmo"></select><span>月</span><select id="ld"></select><span class="gap">日</span><select id="lh"></select><span>時</span><select id="lm"></select><span>分</span><select id="ls"></select><span>秒</span>
     </div>
-    <div class="note" style="margin-top:4px">計画書の予定は 2026/10/20 4:41:03。予備期間（10/21〜11/7）は日ごとに打上げ時刻が変わるので、延期時は発表された時刻に直してください。</div>
   </div>
 
   <div class="card">
-    <h2>観測地点</h2>
-    <div class="row">
-      <div style="flex:2"><label>地点</label><select id="place"></select></div>
-      <div style="flex:1"><button id="gps" style="width:100%">📍 現在地</button></div>
-    </div>
-    <div class="mid" id="obsinfo" style="margin-top:4px"></div>
+    <h2 style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-bottom:4px">観測地点の設定<select id="place" style="flex:1;min-width:0;font-size:14.5px;padding:5px 4px;font-weight:normal;font-feature-settings:'palt'"></select><button id="gps" style="font-size:12px;font-weight:normal;padding:4px 6px;border-radius:8px;color:var(--fg);white-space:nowrap">📍 現在地</button></h2>
+    <div id="obsinfo" style="text-align:center;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums"></div>
   </div>
 
   <div class="card">
-    <h2>第1段分離の見え方</h2>
-    <div class="mid">分離時刻</div>
-    <div class="big" id="septime">--:--:--</div>
+    <h2 style="display:flex;align-items:baseline;justify-content:space-between;gap:4px;white-space:nowrap;margin-bottom:6px">第1段・第2段分離の見え方<b id="septime" style="font-size:20px;color:var(--fg);font-variant-numeric:tabular-nums">--:--:--</b></h2>
     <div class="sep">
-      <div><b id="sepaz">--</b><span>方角</span></div>
-      <div><b id="sepel">--</b><span>仰角</span></div>
-      <div><b id="sepdist">--</b><span>距離</span></div>
+      <div><span>方角</span><b id="sepaz">--</b></div>
+      <div><span>仰角</span><b id="sepel">--</b></div>
+      <div><span>距離</span><b id="sepdist">--</b></div>
     </div>
-    <div class="verdict" id="verdict"></div>
   </div>
 
   <div class="card">
     <h2 id="viewtitle">南の空の見え方</h2>
     <canvas id="view" width="720" height="260" style="width:100%;display:block;border-radius:8px"></canvas>
-    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段分離</span></div>
-    <div class="note" id="viewnote" style="margin-top:4px"></div>
+    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段・第2段分離</span></div>
   </div>
 
   <div class="card">
-    <h2>カウントダウン</h2>
-    <div class="mid" id="cdlabel">打上げまで</div>
-    <div class="big" id="cd">--</div>
-    <div class="mid" id="nowpos"></div>
-    <div class="btns">
-      <button class="pri" id="live">🔊 本番の読み上げ開始</button>
+    <h2 style="margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;gap:6px"><span style="white-space:nowrap">カウントダウン</span><span style="font-size:clamp(9px,2.8vw,11px);font-weight:normal;color:#ffe14d;white-space:nowrap;font-feature-settings:'palt'">「▶▶10倍速」のボタンを押すとテストができます！</span></h2>
+    <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;white-space:nowrap">
+      <span class="mid" id="cdlabel">打上げまで</span><b id="cd" style="font-size:24px;font-variant-numeric:tabular-nums">--</b>
     </div>
-    <div class="btns">
-      <button id="sim1">▶ 再生（実時間）</button>
-      <button id="sim10">⏩ 再生（10倍速）</button>
+    <div class="mid" id="nowpos" style="font-size:12px"></div>
+    <div class="cbtns">
+      <button class="pri" id="live">🔊 本番</button>
+      <button id="sim1">▶ 再生</button>
+      <button id="sim10" style="color:#ffe14d">▶▶ 10倍速</button>
       <button id="stop">■ 停止</button>
     </div>
-    <div class="note" style="margin-top:6px">「再生」は打上げ1分前から分離後まで（X−60秒〜X+11分）を、あなたの地点から見た空でシミュレーションします（音声つき）。本番の読み上げは打上げ時刻に合わせて自動で進みます。画面は点けたままにしてください。</div>
+    <div class="note" style="margin-top:4px">🔊 本番：打上げ時刻に合わせて読み上げ　▶ 再生：打上げ1分前からのテスト　▶▶10倍速：10倍速でテスト</div>
   </div>
 
   <div class="card">
     <h2>空のどこに見えるか（天空図）</h2>
     <canvas id="sky" width="720" height="720"></canvas>
-    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段分離</span></div>
+    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段・第2段分離</span></div>
   </div>
 
   <div class="card">
@@ -126,7 +126,7 @@
   </div>
 
   <div class="card">
-    <h2>各地から見た第1段分離（仰角の高い順）</h2>
+    <h2>各地から見た第1段・第2段分離（仰角の高い順）</h2>
     <div class="note" style="margin-bottom:4px">行をタップするとその地点に切り替えます。</div>
     <div class="rank-wrap"><table id="rank"></table></div>
   </div>
@@ -134,7 +134,7 @@
   <div class="card note">
     <b>計算方法と注意</b><br>
     ・JAXA「2026年度 ロケット打上げ計画書 火星衛星探査機(MMX)／H3ロケット」（2026年8月）の表2（各イベントの経過時間・高度）と図3（飛行経路）から、種子島 吉信射点から真東（方位90°）に打ち上げ、図3の第1段燃焼停止・第2段第1回燃焼停止の位置を通って徐々に南へ曲がる経路を推定しています。<br>
-    ・水平距離（ダウンレンジ）は表2の高度・慣性速度から求めた値と図3の位置を平均したもので、第1段分離（X+299秒・高度214 km）は 北緯約30.1°・東経約138.1°（遠州灘〜伊豆諸島の南方沖）と推定。位置の誤差は数十 km 程度、方角・仰角は数度ずれる可能性があります。<br>
+    ・水平距離（ダウンレンジ）は表2の高度・慣性速度から求めた値と図3の位置を平均したもので、第1段・第2段分離（X+299秒・高度214 km）は 北緯約30.1°・東経約138.1°（遠州灘〜伊豆諸島の南方沖）と推定。位置の誤差は数十 km 程度、方角・仰角は数度ずれる可能性があります。<br>
     ・「日が当たる」は地球を球として、機体位置が地球の影の外にあるかを判定したものです。夜明け前の空で日が当たる高度にある排気ガスは明るく広がって見えることがありますが、天候・大気の状態で大きく変わります。<br>
     ・大気差（屈折）や地形の影響は考慮していません。仰角が低い場合は山や建物に隠れます。
   </div>
@@ -147,7 +147,7 @@ const EVENTS = [
   { t: 116, name: 'SRB-3 第1ペア分離',     say: '固体ロケットブースタ分離' },
   { t: 197, name: '衛星フェアリング分離',   say: '衛星フェアリング分離' },
   { t: 292, name: '第1段燃焼停止 MECO',    say: '第1段エンジン燃焼停止' },
-  { t: 299, name: '第1段・第2段分離',      say: '第1段分離', key: true },
+  { t: 299, name: '第1段・第2段分離',      say: '第1段・第2段分離', key: true },
   { t: 312, name: '第2段第1回燃焼開始',     say: '第2段エンジン点火' },
   { t: 640, name: '第2段第1回燃焼停止',     say: '第2段エンジン燃焼停止' },
 ];
@@ -279,8 +279,8 @@ const fmtT = s => { const a = Math.abs(Math.round(s)); return `${s < 0 ? '−' :
 const $ = id => document.getElementById(id);
 
 function launchDate() {
-  const [y, m, d] = $('ldate').value.split('-').map(Number);
-  const [hh, mm, ss] = ($('ltime').value + ':0:0').split(':').map(Number);
+  const y = +$('ly').value, m = +$('lmo').value, d = +$('ld').value;
+  const hh = +$('lh').value, mm = +$('lm').value, ss = +$('ls').value;
   return new Date(Date.UTC(y, m-1, d, hh - 9, mm, ss || 0)); // JST 入力 → UTC
 }
 // 端末のタイムゾーンによらず JST で表示
@@ -308,14 +308,20 @@ function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: true }).setView([32, 137], 4);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 10, attribution: 'Esri' }).addTo(map);
+  L.control.scale({ metric: true, imperial: false, position: 'bottomleft' }).addTo(map);
   const pts = []; for (let t = 0; t <= T_END; t += 5) { const p = rocketAt(t); pts.push([p.lat, p.lon]); }
-  L.polyline(pts, { color: '#ffb347', weight: 3 }).addTo(map);
+  L.polyline(pts, { color: '#000', weight: 8, opacity: 0.5 }).addTo(map);
+  L.polyline(pts, { color: '#ffb347', weight: 4 }).addTo(map);
   EVENTS.forEach(e => {
     const p = rocketAt(e.t);
     L.circleMarker([p.lat, p.lon], { radius: e.key ? 8 : 4, color: e.key ? '#ff5a5a' : '#ffd25a', fillOpacity: 1, weight: 2 })
       .bindTooltip(`${e.name}（X${fmtT(e.t)}, 高度${Math.round(altAt(e.t))}km）`).addTo(map);
   });
-  L.circleMarker([PAD.lat, PAD.lon], { radius: 4, color: '#fff', fillOpacity: 1 }).bindTooltip('種子島宇宙センター').addTo(map);
+  L.circleMarker([PAD.lat, PAD.lon], { radius: 5, color: '#fff', fillOpacity: 1 })
+    .bindTooltip('種子島', { permanent: true, direction: 'left', className: 'mlabel', offset: [-6, 0] }).addTo(map);
+  const sp = rocketAt(SEP_T);
+  L.circleMarker([sp.lat, sp.lon], { radius: 0, opacity: 0, interactive: false })
+    .bindTooltip('第1段・第2段分離', { permanent: true, direction: 'bottom', className: 'mlabel', offset: [0, 10] }).addTo(map);
   rocketMarker = L.circleMarker([PAD.lat, PAD.lon], { radius: 6, color: '#fff', fillColor: '#ff3d3d', fillOpacity: 1, weight: 2 });
 }
 function updateMap() {
@@ -323,25 +329,32 @@ function updateMap() {
   const sp = rocketAt(SEP_T);
   if (obsMarker) map.removeLayer(obsMarker);
   if (lineObs) map.removeLayer(lineObs);
-  obsMarker = L.circleMarker([obs.lat, obs.lon], { radius: 6, color: '#5fd68a', fillOpacity: 1 }).bindTooltip(obs.name).addTo(map);
-  lineObs = L.polyline([[obs.lat, obs.lon], [sp.lat, sp.lon]], { color: '#5fd68a', weight: 1.5, dashArray: '4 4' }).addTo(map);
-  map.fitBounds(L.latLngBounds([[obs.lat, obs.lon], [PAD.lat, PAD.lon], [sp.lat, sp.lon], [26, 158]]), { padding: [10, 10] });
+  obsMarker = L.circleMarker([obs.lat, obs.lon], { radius: 6, color: '#fff', weight: 2, fillColor: '#5fd68a', fillOpacity: 1 })
+    .bindTooltip(obs.name, { permanent: true, direction: 'top', className: 'mlabel', offset: [0, -6] }).addTo(map);
+  lineObs = L.polyline([[obs.lat, obs.lon], [sp.lat, sp.lon]], { color: '#5fd68a', weight: 2.5, dashArray: '6 5' }).addTo(map);
+  const far = rocketAt(420); // 分離点より東の経路も少し入れる
+  map.fitBounds(L.latLngBounds([[obs.lat, obs.lon], [PAD.lat, PAD.lon], [sp.lat, sp.lon], [far.lat, far.lon]]), { padding: [24, 24] });
 }
 
 // ===== 天空図 =====
 function drawSky(curT) {
   drawView(curT);
-  const c = $('sky'), g = c.getContext('2d'), W = c.width, cx = W/2, cy = W/2, R = W/2 - 40;
+  const c = $('sky'), g = c.getContext('2d'), W = c.width, cx = W/2, cy = W/2, R = W/2 - 56;
   g.clearRect(0, 0, W, W);
   g.fillStyle = '#0e1428'; g.beginPath(); g.arc(cx, cy, R, 0, 2*Math.PI); g.fill();
-  g.strokeStyle = '#2a3458'; g.lineWidth = 2;
-  [0, 30, 60].forEach(el => { g.beginPath(); g.arc(cx, cy, R*(90-el)/90, 0, 2*Math.PI); g.stroke(); });
+  // 方位の十字線
+  g.strokeStyle = '#4a5888'; g.lineWidth = 2;
   g.beginPath(); g.moveTo(cx-R, cy); g.lineTo(cx+R, cy); g.moveTo(cx, cy-R); g.lineTo(cx, cy+R); g.stroke();
-  g.fillStyle = '#93a0c4'; g.font = '26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('北', cx, cy-R-20); g.fillText('南', cx, cy+R+20); g.fillText('東', cx+R+20, cy); g.fillText('西', cx-R-20, cy);
-  g.font = '18px sans-serif'; g.fillText('30°', cx+6, cy-R*60/90+14); g.fillText('60°', cx+6, cy-R*30/90+14);
+  // 等仰角線（30°・60°は破線、地平線は実線）
+  g.strokeStyle = '#7d8cc0'; g.lineWidth = 3; g.setLineDash([14, 10]);
+  [30, 60].forEach(el => { g.beginPath(); g.arc(cx, cy, R*(90-el)/90, 0, 2*Math.PI); g.stroke(); });
+  g.setLineDash([]); g.strokeStyle = '#a3b0d8'; g.lineWidth = 4;
+  g.beginPath(); g.arc(cx, cy, R, 0, 2*Math.PI); g.stroke();
+  g.fillStyle = '#93a0c4'; g.font = 'bold 42px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('北', cx, cy-R-30); g.fillText('南', cx, cy+R+30); g.fillText('東', cx+R+30, cy); g.fillText('西', cx-R-30, cy);
+  g.fillStyle = '#c8d2ee'; g.font = 'bold 30px sans-serif'; g.fillText('30°', cx+32, cy-R*60/90+22); g.fillText('60°', cx+32, cy-R*30/90+22);
   const xy = p => { const r = R*(90-p.el)/90; return [cx + r*Math.sin(p.az*D2R), cy - r*Math.cos(p.az*D2R)]; };
-  g.lineWidth = 5; g.lineCap = 'round';
+  g.lineWidth = 9; g.lineCap = 'round';
   for (let i = 1; i < track.length; i++) {
     const a = track[i-1], b = track[i];
     if (a.el < 0 && b.el < 0) continue;
@@ -354,17 +367,19 @@ function drawSky(curT) {
     const p = track[e.t]; if (!p || p.el < 0) return;
     const [x, y] = xy(p);
     if (e.key) {
-      g.fillStyle = '#ff5a5a'; g.beginPath(); g.moveTo(x, y-14); g.lineTo(x+14, y); g.lineTo(x, y+14); g.lineTo(x-14, y); g.closePath(); g.fill();
-      g.fillStyle = '#fff'; g.font = 'bold 22px sans-serif'; g.textAlign = x > cx ? 'right' : 'left';
-      g.fillText('第1段分離', x + (x > cx ? -20 : 20), y - 20);
+      g.fillStyle = '#ff5a5a'; g.beginPath(); g.moveTo(x, y-22); g.lineTo(x+22, y); g.lineTo(x, y+22); g.lineTo(x-22, y); g.closePath(); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 32px sans-serif'; g.textAlign = 'center';
+      const st = '第1段・第2段分離', hw = g.measureText(st).width / 2 + 6;
+      g.strokeStyle = 'rgba(14,20,40,.9)'; g.lineWidth = 8; g.lineJoin = 'round';
+      const lx = Math.min(Math.max(x, hw), W - hw); g.strokeText(st, lx, y - 42); g.fillText(st, lx, y - 42);
     } else {
-      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 5, 0, 2*Math.PI); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 9, 0, 2*Math.PI); g.fill();
     }
   });
   if (curT != null && curT >= 0 && curT <= T_END) {
     const p = track[Math.round(curT)];
     if (p && p.el > 0) { const [x, y] = xy(p); g.fillStyle = '#ff3d3d'; g.strokeStyle = '#fff'; g.lineWidth = 3;
-      g.beginPath(); g.arc(x, y, 11, 0, 2*Math.PI); g.fill(); g.stroke(); }
+      g.beginPath(); g.arc(x, y, 18, 0, 2*Math.PI); g.fill(); g.stroke(); }
   }
 }
 
@@ -377,7 +392,7 @@ function viewRange() {
   const ref = v[0].az; let lo = 0, hi = 0, elTop = 0;
   v.forEach(p => { const d = ((p.az - ref + 540) % 360) - 180; lo = Math.min(lo, d); hi = Math.max(hi, d); elTop = Math.max(elTop, p.el); });
   const center = (Math.round((ref + (lo + hi) / 2) / 10) * 10 + 360) % 360;
-  return { center, span: Math.min(220, Math.max(120, hi - lo + 30)), elMax: Math.max(30, Math.ceil((elTop + 12) / 10) * 10) };
+  return { center, span: Math.min(220, Math.max(120, hi - lo + 30)), elMax: Math.max(30, Math.ceil((elTop + 16) / 10) * 10) };
 }
 function drawView(curT) {
   const c = $('view'), g = c.getContext('2d'), W = c.width;
@@ -437,7 +452,10 @@ function drawView(curT) {
     if (e.key) {
       g.fillStyle = '#ff5a5a'; g.beginPath(); g.moveTo(x, y-13); g.lineTo(x+13, y); g.lineTo(x, y+13); g.lineTo(x-13, y); g.closePath(); g.fill();
       g.fillStyle = '#fff'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center';
-      const st = `第1段分離 ${hms(jst(new Date(launchDate().getTime() + SEP_T*1000)))}`; g.fillText(st, clampX(st, x), y - 30);
+      const st = '第1段・第2段分離', tt = hms(jst(new Date(launchDate().getTime() + SEP_T*1000)));
+      const lx = Math.max(clampX(st, x), g.measureText(st).width / 2 + 56); // 左端の仰角目盛りを避ける
+      g.strokeStyle = 'rgba(4,6,26,.85)'; g.lineWidth = 6; g.lineJoin = 'round';
+      g.strokeText(st, lx, y - 54); g.strokeText(tt, lx, y - 26); g.fillText(st, lx, y - 54); g.fillText(tt, lx, y - 26);
       g.font = '22px sans-serif';
     } else if (e.t !== 292 && e.t !== 312) {
       g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 5, 0, 2*Math.PI); g.fill();
@@ -466,10 +484,6 @@ function drawView(curT) {
   g.fillStyle = '#c8d2ee'; g.textAlign = 'right'; g.font = '20px sans-serif'; g.fillText('こぶし1つ', fx - 10, yEl(5));
   const dirTitle = DIR8[Math.round(center / 45) % 8];
   $('viewtitle').textContent = `${obs.name}から見た${dirTitle}の空`;
-  const s = track[SEP_T];
-  $('viewnote').textContent = s.el > 0
-    ? `第1段分離は${dirName(s.az)}の空、地平線から仰角${s.el.toFixed(0)}°（腕を伸ばした握りこぶし約${(s.el/10).toFixed(1)}個分）の高さ。横幅は方角${Math.round(SPAN)}°分（縦横同じ縮尺）。`
-    : '第1段分離の位置はこの地点からは地平線の下です。';
 }
 
 // ===== 結果表示 =====
@@ -480,21 +494,11 @@ function render() {
   computeTrack();
   const L0 = launchDate(), sepDate = new Date(L0.getTime() + SEP_T*1000);
   const s = track[SEP_T];
-  $('obsinfo').textContent = `${obs.name}（北緯${obs.lat.toFixed(3)}° 東経${obs.lon.toFixed(3)}°）`;
+  $('obsinfo').textContent = `北緯 ${obs.lat.toFixed(3)}°　東経 ${obs.lon.toFixed(3)}°`;
   $('septime').textContent = hms(jst(sepDate)) + ' 頃';
   $('sepaz').textContent = `${dirName(s.az)}`;
   $('sepel').textContent = `${s.el.toFixed(1)}°`;
   $('sepdist').textContent = `${Math.round(s.rng)}km`;
-  const sunAlt = sunAltAt(obs, sepDate), vw = visibleWindow();
-  let v = `方位角 ${s.az.toFixed(0)}°（${dirName(s.az)}）・仰角 ${s.el.toFixed(1)}° の空。分離点は高度 ${Math.round(s.alt)} km、北緯 ${s.lat.toFixed(1)}° 東経 ${s.lon.toFixed(1)}° 付近（推定）。<br>`;
-  if (s.el <= 0) v += '<span class="tag t-ng">地平線の下</span> この地点からは分離の瞬間は見えません。';
-  else if (s.el < 5) v += '<span class="tag t-ng">ほぼ地平線</span> 仰角が低く、水平線まで開けた場所でないと見えにくい位置です。';
-  else if (s.el < 15) v += '<span class="tag t-ok">低い空</span> 方角の開けた場所なら見える可能性があります。';
-  else v += '<span class="tag t-ok">見やすい高さ</span>';
-  v += s.lit ? ' <span class="tag t-sun">日が当たる</span>' : ' <span class="tag">地球の影の中</span>';
-  v += `<br>そのときの太陽高度（観測地）: ${sunAlt.toFixed(1)}°` + (sunAlt < -12 ? '（空は暗い）' : sunAlt < -6 ? '（夜明け前の薄明）' : sunAlt < 0 ? '（明るくなりはじめ）' : '（日の出後）');
-  if (vw) v += `<br>ロケットが地平線上にあるのは X${fmtT(vw.from)} 〜 ${vw.to >= T_END ? 'X+10:40 以降' : 'X' + fmtT(vw.to)}（${hms(jst(new Date(L0.getTime() + vw.from*1000)))}〜）`;
-  $('verdict').innerHTML = v;
 
   // イベント表
   let h = '<tr><th>イベント</th><th>時刻</th><th>方角</th><th>仰角</th><th>距離</th></tr>';
@@ -523,25 +527,35 @@ function render() {
 }
 
 // ===== 地点選択 =====
+// 前回測った現在地（地点を切り替えた後でも選び直せるよう別に保存）
+let lastGps = null;
+function loadLastGps() {
+  try { const g = JSON.parse(localStorage.getItem('mmxh3-gps')); if (g && isFinite(g.lat)) return g; } catch (e) {}
+  return obs.name === '現在地' ? { ...obs } : null;
+}
 function fillPlaces() {
   const sel = $('place');
-  sel.innerHTML = PLACES.map(p => `<option>${p[0]}</option>`).join('') + '<option value="__gps">📍 現在地</option>';
-  const has = PLACES.some(p => p[0] === obs.name);
-  if (!has) { const o = document.createElement('option'); o.textContent = obs.name; sel.insertBefore(o, sel.lastChild); }
-  sel.value = obs.name;
+  sel.innerHTML = PLACES.map(p => `<option>${p[0]}</option>`).join('')
+    + (lastGps ? '<option value="__last">現在地</option>' : '')
+    + '<option value="__gps">📍 現在地を測る</option>';
+  syncPlace();
 }
+function syncPlace() { $('place').value = obs.name === '現在地' && lastGps ? '__last' : obs.name; }
 function selectPlace(name) {
   if (name === '__gps') return useGps();
+  if (name === '__last' && lastGps) { obs = { ...lastGps }; saveObs(); render(); return; }
   const p = PLACES.find(x => x[0] === name);
   if (p) { obs = { name: p[0], lat: p[1], lon: p[2] }; saveObs(); render(); }
 }
 function useGps() {
-  if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); return; }
+  if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); syncPlace(); return; }
   $('obsinfo').textContent = '現在地を取得中…';
   navigator.geolocation.getCurrentPosition(pos => {
     obs = { name: '現在地', lat: pos.coords.latitude, lon: pos.coords.longitude };
+    lastGps = { ...obs };
+    try { localStorage.setItem('mmxh3-gps', JSON.stringify(lastGps)); } catch (e) {}
     saveObs(); fillPlaces(); render();
-  }, err => { alert('現在地を取得できませんでした: ' + err.message); $('place').value = obs.name; render(); },
+  }, err => { alert('現在地を取得できませんでした: ' + err.message); syncPlace(); render(); },
   { enableHighAccuracy: true, timeout: 15000 });
 }
 
@@ -570,7 +584,7 @@ function announce(sec) {
   const e = EVENTS.find(x => x.t === sec);
   if (e) {
     if (e.key) {
-      say(s.el > 0 ? `第1段分離。${dirName(s.az)}、仰角${NUM_DEG(s.el)}` : '第1段分離。この地点からは地平線の下です');
+      say(s.el > 0 ? `第1段・第2段分離。${dirName(s.az)}、仰角${NUM_DEG(s.el)}` : '第1段・第2段分離。この地点からは地平線の下です');
     } else say(e.say);
     return;
   }
@@ -586,7 +600,7 @@ function announce(sec) {
   }
   // 分離前
   const toSep = SEP_T - sec;
-  if (toSep === 60) say(`第1段分離まで1分。${dirName(s.az)}の空、仰角${NUM_DEG(s.el)}`);
+  if (toSep === 60) say(`第1段・第2段分離まで1分。${dirName(s.az)}の空、仰角${NUM_DEG(s.el)}`);
   else if (toSep > 0 && toSep <= 30 && toSep % 10 === 0) say(`分離まで${toSep}秒`);
   else if (toSep > 0 && toSep <= 5) say(String(toSep));
 }
@@ -600,10 +614,10 @@ function tick() {
     $('cd').textContent = (d ? `${d}日 ` : '') + `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
     $('nowpos').textContent = mode === 'sim' ? `シミュレーション再生中（${simSpeed}倍速）` : '';
   } else if (t < SEP_T) {
-    $('cdlabel').textContent = '第1段分離まで';
+    $('cdlabel').textContent = '第1段・第2段分離まで';
     $('cd').textContent = `${Math.ceil(SEP_T - t)} 秒`;
   } else {
-    $('cdlabel').textContent = '第1段分離から';
+    $('cdlabel').textContent = '第1段・第2段分離から';
     $('cd').textContent = `${Math.floor(t - SEP_T)} 秒経過`;
   }
   if (t >= 0 && t <= T_END) {
@@ -626,24 +640,36 @@ function startMode(m, speed) {
   mode = m; simSpeed = speed || 1; simStartReal = performance.now();
   lastSec = Math.floor(currentT());
   if (m === 'live' && 'wakeLock' in navigator) navigator.wakeLock.request('screen').catch(() => {});
-  $('live').textContent = m === 'live' ? '🔊 本番の読み上げ中' : '🔊 本番の読み上げ開始';
+  $('live').textContent = m === 'live' ? '🔊 本番中' : '🔊 本番';
 }
 function stopAll() {
   mode = null; lastSec = null; simSpeed = 1;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  $('live').textContent = '🔊 本番の読み上げ開始';
+  $('live').textContent = '🔊 本番';
   if (rocketMarker && map && map.hasLayer(rocketMarker)) map.removeLayer(rocketMarker);
   drawSky(null);
 }
 
 // ===== 起動 =====
+const PLAN_LAUNCH = { d: '2026-10-20', h: 4, m: 41, s: 3 }; // 計画書の打上げ予定（JST）
+[['ly', 2, 2026], ['lmo', 12, 1], ['ld', 31, 1], ['lh', 24, 0], ['lm', 60, 0], ['ls', 60, 0]].forEach(([id, n, b]) => {
+  $(id).innerHTML = Array.from({ length: n }, (_, i) => `<option value="${b + i}">${pad2(b + i)}</option>`).join('');
+});
+function setLaunch(L) { const [y, mo, d] = L.d.split('-').map(Number); $('ly').value = y; $('lmo').value = mo; $('ld').value = d; $('lh').value = L.h; $('lm').value = L.m; $('ls').value = L.s; }
+function saveLaunch() {
+  try { localStorage.setItem('mmxh3-launch', JSON.stringify({ d: `${$('ly').value}-${pad2($('lmo').value)}-${pad2($('ld').value)}`, h: +$('lh').value, m: +$('lm').value, s: +$('ls').value })); } catch (e) {}
+}
+setLaunch(PLAN_LAUNCH);
+try { const L = JSON.parse(localStorage.getItem('mmxh3-launch')); if (L && L.d) setLaunch(L); } catch (e) {}
 obs = loadObs();
+lastGps = loadLastGps();
 fillPlaces();
 try { initMap(); } catch (e) { $('map').textContent = '地図を読み込めませんでした'; }
 render();
 $('place').onchange = e => selectPlace(e.target.value);
 $('gps').onclick = useGps;
-$('ldate').onchange = $('ltime').onchange = () => { stopAll(); render(); };
+['ly', 'lmo', 'ld', 'lh', 'lm', 'ls'].forEach(id => $(id).onchange = () => { stopAll(); saveLaunch(); render(); });
+$('lreset').onclick = () => { setLaunch(PLAN_LAUNCH); try { localStorage.removeItem('mmxh3-launch'); } catch (e) {} stopAll(); render(); };
 $('live').onclick = () => startMode('live');
 $('sim1').onclick = () => startMode('sim', 1);
 $('sim10').onclick = () => startMode('sim', 10);
