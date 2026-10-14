@@ -13,7 +13,7 @@
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; font-size:15px;
            padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 16px); }
-    h1 { font-size:19px; margin:12px 0 2px; }
+    h1 { font-size:19px; margin:12px 0 2px; white-space:nowrap; }
     .sub { color:var(--mut); font-size:12px; margin-bottom:10px; }
     .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:10px 0; }
     .card h2 { font-size:14px; margin:0 0 8px; color:var(--acc); }
@@ -563,10 +563,25 @@ function useGps() {
 let jaVoice = null;
 function pickVoice() { const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => v.lang === 'ja-JP') || vs.find(v => /^ja/.test(v.lang)) || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+// 読み上げを頼んでから声が出始めるまでの時間 [s]。端末ごとに実測して更新し、その分だけ早めに読み上げる
+let speechLead = 0.3, leadMeasured = false;
+try { const v = parseFloat(localStorage.getItem('mmxh3-lead')); if (v > 0 && v < 2) speechLead = v; } catch (e) {}
 function say(text, now) {
   if (!('speechSynthesis' in window)) return;
-  if (now) speechSynthesis.cancel(); // 秒読みは前の読み上げを待たずに今の数字を言う
+  // 秒読みは前の読み上げを待たずに今の数字を言う（話していないときに cancel すると iPhone で出だしが遅れるので、話しているときだけ止める）
+  const busy = speechSynthesis.speaking || speechSynthesis.pending;
+  if (now && busy) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; if (jaVoice) u.voice = jaVoice; u.rate = 1.1;
+  const t0 = performance.now();
+  // 前の読み上げを待たずに始まったものだけで遅れを測る
+  if (!busy || now) u.onstart = () => {
+    const d = (performance.now() - t0) / 1000;
+    if (d > 0.02 && d < 2) {
+      speechLead = Math.min(1.5, Math.max(0.1, leadMeasured ? speechLead * 0.6 + d * 0.4 : d)); // 最初の1回はそのまま使う
+      leadMeasured = true;
+      try { localStorage.setItem('mmxh3-lead', speechLead.toFixed(3)); } catch (e) {}
+    }
+  };
   speechSynthesis.speak(u);
 }
 const NUM_DEG = x => `${Math.round(x)}度`;
@@ -574,7 +589,6 @@ const NUM_DEG = x => `${Math.round(x)}度`;
 // mode: null（待機表示） / 'live' / 'sim'
 let mode = null, simStartReal = 0, simSpeed = 1, lastSec = null, timer = null;
 const SIM_FROM = -60, SIM_TO = T_END + 20, SLOW_FROM = -10, SLOW_TO = 0;
-const SPEECH_LEAD = 0.3; // [s]
 let lastDraw = 0;
 
 // ahead: 何秒（実時間）先の時刻を求めるか。読み上げの先出しに使う
@@ -620,8 +634,8 @@ function tick() {
   { const x = new Date(Date.now() + 9*3600e3);
     $('nowclock').innerHTML = `<span style="font-size:10px;font-weight:normal;color:var(--mut);margin-right:3px">現在時刻</span>${pad2(x.getUTCMonth()+1)}/${pad2(x.getUTCDate())} ${pad2(x.getUTCHours())}:${pad2(x.getUTCMinutes())}:${pad2(x.getUTCSeconds())}`; }
   const t = currentT();
-  // 読み上げは音声エンジンの立ち上がり分だけ早めに出す（実時間で SPEECH_LEAD 秒先の時刻で判定）
-  const sec = Math.floor(currentT(SPEECH_LEAD));
+  // 読み上げは音声エンジンの立ち上がり分だけ早めに出す（実時間で speechLead 秒先の時刻で判定）
+  const sec = Math.floor(currentT(speechLead));
   if (mode === 'sim' && t > SIM_TO) { stopAll(); return; }
   // 表示
   if (t < 0) {
@@ -649,7 +663,7 @@ function tick() {
       announce(k);
     }
   }
-  if (mode) lastSec = sec;
+  if (mode) lastSec = Math.max(lastSec, sec); // 補正値が変わっても同じ数字を2回言わない
 }
 function startMode(m, speed) {
   if ('speechSynthesis' in window) { speechSynthesis.cancel(); say(m === 'sim' ? 'シミュレーションを開始します' : '読み上げを開始します'); }
@@ -667,6 +681,17 @@ function stopAll() {
 }
 
 // ===== 起動 =====
+// タイトルを横幅いっぱいの大きさにする
+function fitTitle() {
+  const h = document.querySelector('h1');
+  h.style.fontSize = '100px';
+  const w = h.scrollWidth;
+  h.style.fontSize = Math.floor(100 * h.clientWidth / w * 0.99 * 10) / 10 + 'px';
+}
+fitTitle();
+window.addEventListener('resize', fitTitle);
+if ('ResizeObserver' in window) { let lastW = 0; new ResizeObserver(() => { const w = document.querySelector('h1').clientWidth; if (w !== lastW) { lastW = w; fitTitle(); } }).observe(document.querySelector('h1')); }
+if (document.fonts) document.fonts.ready.then(fitTitle);
 const PLAN_LAUNCH = { d: '2026-10-20', h: 4, m: 41, s: 3 }; // 計画書の打上げ予定（JST）
 [['ly', 2, 2026], ['lmo', 12, 1], ['ld', 31, 1], ['lh', 24, 0], ['lm', 60, 0], ['ls', 60, 0]].forEach(([id, n, b]) => {
   $(id).innerHTML = Array.from({ length: n }, (_, i) => `<option value="${b + i}">${pad2(b + i)}</option>`).join('');
