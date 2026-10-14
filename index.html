@@ -28,10 +28,11 @@
     .btns button { flex:1; }
     .big { font-size:30px; font-weight:bold; font-variant-numeric:tabular-nums; text-align:center; }
     .mid { text-align:center; color:var(--mut); font-size:13px; }
-    .sep { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center; }
-    .sep div { background:#0e1428; border-radius:8px; padding:4px 2px; white-space:nowrap; }
-    .sep b { font-size:18px; font-variant-numeric:tabular-nums; }
-    .sep span { font-size:11px; color:var(--mut); margin-right:4px; }
+    .sep1 { display:flex; align-items:baseline; justify-content:space-between; gap:3px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .sep1 h2 { margin:0; font-size:13px; }
+    .sep1 .st { font-size:18px; }
+    .sep1 span { font-size:10.5px; color:var(--mut); }
+    .sep1 span b { font-size:15.5px; color:var(--fg); margin-left:1px; }
     #map { height:280px; border:2px solid #7d8cc0; border-radius:6px; }
     #map .leaflet-tile-pane { filter:brightness(1.9) contrast(1.15); }
     .mlabel { background:rgba(11,16,32,.85); color:#fff; border:1px solid #7d8cc0; border-radius:4px; padding:1px 5px; font-size:11px; font-weight:bold; box-shadow:none; }
@@ -87,11 +88,9 @@
   </div>
 
   <div class="card">
-    <h2 style="display:flex;align-items:baseline;justify-content:space-between;gap:4px;white-space:nowrap;margin-bottom:6px">第1段・第2段分離の見え方<b id="septime" style="font-size:20px;color:var(--fg);font-variant-numeric:tabular-nums">--:--:--</b></h2>
-    <div class="sep">
-      <div><span>方角</span><b id="sepaz">--</b></div>
-      <div><span>仰角</span><b id="sepel">--</b></div>
-      <div><span>距離</span><b id="sepdist">--</b></div>
+    <div class="sep1">
+      <h2>分離時刻</h2><b id="septime" class="st">--:--:--</b>
+      <span><b id="sepaz">--</b></span><span>仰角<b id="sepel">--</b></span><span><b id="sepdist">--</b></span>
     </div>
   </div>
 
@@ -117,14 +116,14 @@
   </div>
 
   <div class="card">
-    <h2>空のどこに見えるか（天空図）</h2>
-    <canvas id="sky" width="720" height="720"></canvas>
-    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段・第2段分離</span></div>
+    <h2>飛行経路（推定）</h2>
+    <div id="map"></div>
   </div>
 
   <div class="card">
-    <h2>飛行経路（推定）</h2>
-    <div id="map"></div>
+    <h2>空のどこに見えるか（天空図）</h2>
+    <canvas id="sky" width="720" height="720"></canvas>
+    <div class="lg"><i style="background:var(--sun)"></i>日が当たる区間<i style="background:var(--sh)"></i>地球の影の中<span style="margin-left:8px">◆ 第1段・第2段分離</span></div>
   </div>
 
   <div class="card">
@@ -502,7 +501,7 @@ function render() {
   const L0 = launchDate(), sepDate = new Date(L0.getTime() + SEP_T*1000);
   const s = track[SEP_T];
   $('obsinfo').textContent = `北緯 ${obs.lat.toFixed(3)}°　東経 ${obs.lon.toFixed(3)}°`;
-  $('septime').textContent = hms(jst(sepDate)) + ' 頃';
+  $('septime').textContent = hms(jst(sepDate));
   $('sepaz').textContent = `${dirName(s.az)}`;
   $('sepel').textContent = `${s.el.toFixed(1)}°`;
   $('sepdist').textContent = `${Math.round(s.rng)}km`;
