@@ -106,7 +106,7 @@
       <button id="sim10" style="color:#ffe14d">▶▶ 10倍速</button>
       <button id="stop">■ 停止</button>
     </div>
-    <div class="note" style="margin-top:4px">🔊 本番：打上げ時刻に合わせて読み上げ　▶ 再生：打上げ1分前からのテスト　▶▶10倍速：10倍速でテスト</div>
+    <div class="note" style="margin-top:4px">🔊 本番：打上げ時刻に合わせて読み上げ　▶ 再生：打上げ15秒前からのテスト　▶▶10倍速：10倍速でテスト</div>
   </div>
 
   <div class="card">
@@ -588,7 +588,8 @@ const NUM_DEG = x => `${Math.round(x)}度`;
 
 // mode: null（待機表示） / 'live' / 'sim'
 let mode = null, simStartReal = 0, simSpeed = 1, lastSec = null, timer = null;
-const SIM_FROM = -60, SIM_TO = T_END + 20, SLOW_FROM = -10, SLOW_TO = 0;
+let simFrom = -60; // 再生の開始時刻（▶ 再生は −15 秒、▶▶ 10倍速は −60 秒）
+const SIM_TO = T_END + 20, SLOW_FROM = -10, SLOW_TO = 0;
 let lastDraw = 0;
 
 // ahead: 何秒（実時間）先の時刻を求めるか。読み上げの先出しに使う
@@ -596,8 +597,8 @@ function currentT(ahead = 0) {
   if (mode === 'sim') {
     // 早送りでも打上げ10秒前〜発射は実時間で進め、秒読みを1秒おきに読み上げる
     const e = (performance.now() - simStartReal) / 1000 + ahead, v = simSpeed;
-    const e1 = (SLOW_FROM - SIM_FROM) / v, e2 = e1 + (SLOW_TO - SLOW_FROM);
-    if (e < e1) return SIM_FROM + e * v;
+    const e1 = (SLOW_FROM - simFrom) / v, e2 = e1 + (SLOW_TO - SLOW_FROM);
+    if (e < e1) return simFrom + e * v;
     if (e < e2) return SLOW_FROM + (e - e1);
     return SLOW_TO + (e - e2) * v;
   }
@@ -712,8 +713,8 @@ $('gps').onclick = useGps;
 ['ly', 'lmo', 'ld', 'lh', 'lm', 'ls'].forEach(id => $(id).onchange = () => { stopAll(); saveLaunch(); render(); });
 $('lreset').onclick = () => { setLaunch(PLAN_LAUNCH); try { localStorage.removeItem('mmxh3-launch'); } catch (e) {} stopAll(); render(); };
 $('live').onclick = () => startMode('live');
-$('sim1').onclick = () => startMode('sim', 1);
-$('sim10').onclick = () => startMode('sim', 10);
+$('sim1').onclick = () => { simFrom = -15; startMode('sim', 1); };
+$('sim10').onclick = () => { simFrom = -60; startMode('sim', 10); };
 $('stop').onclick = stopAll;
 timer = setInterval(tick, 50);
 tick();
